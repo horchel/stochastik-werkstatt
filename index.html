@@ -120,7 +120,9 @@ mark.kw:hover,mark.kw:focus{background:color-mix(in srgb,var(--va) 40%,transpare
 mark.kw:hover::after,mark.kw:focus::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 4px);z-index:20;background:var(--ink);color:var(--surface);padding:7px 9px;border-radius:7px;font-size:.78rem;font-weight:400;line-height:1.4;width:max-content;max-width:280px;white-space:normal;box-shadow:0 6px 16px -6px rgba(0,0,0,.5)}
 .kwtg{display:block;margin-top:8px;font:inherit;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:3px 9px;cursor:pointer}
 .kwlist{margin:8px 0 0;padding-left:1.1em;font-size:.82rem;display:flex;flex-direction:column;gap:5px}
-.kwlist b{color:var(--va)}
+.kwlist b{color:var(--va)} .kwlist b.neg{color:var(--hit)} .kwlist li.m{color:var(--muted);list-style:none;margin-left:-1.1em;font-size:.76rem}
+mark.kw.neg{background:color-mix(in srgb,var(--hit) 24%,transparent);border-bottom-color:var(--hit);font-weight:700}
+mark.kw.neg:hover,mark.kw.neg:focus{background:color-mix(in srgb,var(--hit) 42%,transparent)}
 .colbg{fill:var(--va);opacity:.12}
 @media (max-width:1180px){main{grid-template-columns:minmax(0,1fr) 360px}nav{grid-column:1/-1;flex-direction:row;overflow-x:auto;padding:8px}nav .grp{flex-direction:row;align-items:center;flex:none}nav button{white-space:nowrap}}
 @media (max-width:860px){main{grid-template-columns:minmax(0,1fr)}.mid{display:contents}.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;aspect-ratio:auto;height:clamp(240px,42vh,420px);box-shadow:0 6px 14px -10px rgba(0,0,0,.35)}.hint{display:none}}
@@ -282,8 +284,12 @@ function setSteps(id, i){ [...$(id).children].forEach((li,j) => { li.className =
 
 // ---------- Schlüsselwörter in Aufgabentexten ----------
 const KWS = [
- [/ohne Zurücklegen/, 'Die Urne ändert sich: Im 2. Zug liegt eine Kugel weniger darin – Zähler und Nenner anpassen.'],
- [/mit Zurücklegen/, 'Jeder Zug sieht dieselbe Urne – die Brüche bleiben in jeder Stufe gleich.'],
+ // Umkehrwörter (rot): ein einzelnes Wort dreht die Aufgabe
+ [/ohne(?= Zurücklegen)/, 'UMKEHRWORT. „ohne Zurücklegen“: Die gezogene Kugel fehlt im 2. Zug – Zähler und Nenner ändern sich. Mit „mit“ wäre es eine andere Aufgabe.', 'neg'],
+ [/mit(?= Zurücklegen)/, 'UMKEHRWORT. „mit Zurücklegen“: Die Kugel kommt zurück, jeder Zug sieht dieselbe Urne – Brüche bleiben gleich.', 'neg'],
+ [/keine(?= Auszahlung)|ohne(?= Auszahlung)/, 'UMKEHRWORT. Kein Geld zurück: Auszahlung 0 €, der Einsatz ist trotzdem weg → Nettogewinn = −Einsatz.', 'neg'],
+ [/\bohne\b|\bkeine?n?\b|\bnicht\b|\bnie\b/, 'UMKEHRWORT. Dieses Wort dreht die Bedeutung des Satzes um – nie überlesen.', 'neg'],
+ [/Zurücklegen/, 'Entscheidend ist das Wort davor: „ohne“ → Urne ändert sich, „mit“ → Urne bleibt gleich.'],
  [/nacheinander/, 'Die Reihenfolge zählt: RB und BR sind zwei verschiedene Pfade.'],
  [/zufällig/, 'Jede Kugel ist gleich wahrscheinlich (Laplace-Annahme).'],
  [/zwei rote|genau eine rote|mindestens eine rote|zwei gleiche/, 'Das gesuchte Ereignis: Welche Pfade gehören dazu? Bei „mindestens“ hilft oft das Gegenereignis.'],
@@ -323,17 +329,17 @@ const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;
 const kwOpen = new Set();
 function hlText(seg){
   const found = [];
-  KWS.forEach(([re,tip]) => { const g = new RegExp(re.source, 'g'); let m; while ((m = g.exec(seg))) { if (!m[0]) { g.lastIndex++; continue; } found.push({s:m.index, e:m.index+m[0].length, tip, txt:m[0]}); } });
+  KWS.forEach(([re,tip,cls]) => { const g = new RegExp(re.source, 'g'); let m; while ((m = g.exec(seg))) { if (!m[0]) { g.lastIndex++; continue; } found.push({s:m.index, e:m.index+m[0].length, tip, txt:m[0], cls:cls || ''}); } });
   found.sort((a,b) => a.s - b.s || b.e - a.e);
   let out = '', pos = 0;
-  for (const f of found) { if (f.s < pos) continue; out += seg.slice(pos, f.s) + `<mark class="kw" tabindex="0" data-tip="${esc(f.tip)}">${f.txt}</mark>`; pos = f.e; }
+  for (const f of found) { if (f.s < pos) continue; out += seg.slice(pos, f.s) + `<mark class="kw ${f.cls}" tabindex="0" data-tip="${esc(f.tip)}">${f.txt}</mark>`; pos = f.e; }
   return out + seg.slice(pos);
 }
 function taskHTML(id, html){
   const out = html.split(/(<[^>]+>)/).map(p => p.startsWith('<') ? p : hlText(p)).join('');
-  const list = []; out.replace(/<mark class="kw"[^>]*data-tip="([^"]*)">([^<]*)<\/mark>/g, (m,t,w) => { if (!list.some(x => x[1] === t)) list.push([w,t]); return m; });
+  const list = []; out.replace(/<mark class="(kw[^"]*)"[^>]*data-tip="([^"]*)">([^<]*)<\/mark>/g, (m,c,t,w) => { if (!list.some(x => x[1] === t)) list.push([w,t,c]); return m; });
   const open = kwOpen.has(id);
-  return `<b>Aufgabe:</b> ${out}` + (list.length ? `<button class="kwtg" type="button" data-box="${id}">${open ? 'Erklärungen ausblenden' : `Schlüsselwörter erklären (${list.length})`}</button><ul class="kwlist"${open ? '' : ' hidden'}>${list.map(([w,t]) => `<li><b>${w}</b> – ${t}</li>`).join('')}</ul>` : '');
+  return `<b>Aufgabe:</b> ${out}` + (list.length ? `<button class="kwtg" type="button" data-box="${id}">${open ? 'Erklärungen ausblenden' : `Schlüsselwörter erklären (${list.length})`}</button><ul class="kwlist"${open ? '' : ' hidden'}>${list.map(([w,t,c]) => `<li><b class="${c.includes('neg') ? 'neg' : ''}">${w}</b> – ${t}</li>`).join('')}<li class="m">Rot = Umkehrwort (dreht die Aufgabe), orange = Fachbegriff.</li></ul>` : '');
 }
 document.addEventListener('click', e => { const b = e.target.closest('.kwtg'); if (!b) return; const id = b.dataset.box; if (kwOpen.has(id)) kwOpen.delete(id); else kwOpen.add(id); const ul = b.nextElementSibling; ul.hidden = !kwOpen.has(id); b.textContent = ul.hidden ? `Schlüsselwörter erklären (${ul.children.length})` : 'Erklärungen ausblenden'; });
 
