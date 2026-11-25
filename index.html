@@ -138,7 +138,11 @@ input[type=range]{accent-color:var(--ink)}
 .nd{stroke:var(--surface);stroke-width:2} .nd.R{fill:var(--va)} .nd.B{fill:var(--vb)} .nd.root{fill:var(--ink)}
 .chip{fill:var(--line)} .chip.T{fill:var(--va)}
 .urn{fill:var(--surface);stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
-.ball{stroke:var(--surface);stroke-width:1.5} .ball.R{fill:var(--va)} .ball.B{fill:var(--vb)} .ball.out{fill:none;stroke:var(--muted);stroke-dasharray:3 2}
+.ball{stroke:var(--surface);stroke-width:1.5} .ball.R{fill:var(--va)} .ball.B{fill:var(--vb)} .ball.G{fill:var(--line)} .ball.out{fill:none;stroke:var(--muted);stroke-dasharray:3 2}
+.hud{display:flex;flex-wrap:wrap;gap:6px 14px;font-family:var(--f-mono);font-size:.84rem;align-items:baseline}
+.hud b{font-size:1.05rem} .hud .fire{color:var(--va)}
+.medals{display:flex;flex-direction:column;gap:4px;font-size:.86rem}
+.medals span{display:inline-block;min-width:4.5em;font-weight:600}
 .task{font-size:.9rem;padding:10px 12px;border-radius:8px;background:var(--bg);border-left:4px solid var(--vb);line-height:1.6}
 mark.kw{position:relative;background:color-mix(in srgb,var(--va) 22%,transparent);color:inherit;border-bottom:2px solid var(--va);border-radius:3px;padding:0 2px;cursor:help;outline:none}
 mark.kw:hover,mark.kw:focus{background:color-mix(in srgb,var(--va) 40%,transparent)}
@@ -259,13 +263,13 @@ function bracket(x1, x2, y, label, col, dy=15, up=false){
 }
 
 // Urne mit Kugeln: r rote, b blaue; gone = Farbe der gerade entnommenen Kugel (als leerer Platz gezeigt)
-function drawUrn(cx, cy, w, h, r, b, gone){
+function drawUrn(cx, cy, w, h, r, b, gone, cls2='B'){
   const g = el('g');
   const top = cy - h/2, bot = cy + h/2, xl = cx - w/2, xr = cx + w/2, ins = w * 0.08;
   g.append(el('path', {d:`M ${xl} ${top} L ${xl+ins} ${bot-8} Q ${cx} ${bot+10} ${xr-ins} ${bot-8} L ${xr} ${top}`, class:'urn'}));
   g.append(el('line', {x1:xl-6, x2:xr+6, y1:top, y2:top, class:'urn'}));
-  const balls = [...Array(r).fill('R'), ...Array(b).fill('B')]; if (gone) balls.push('out' + gone);
-  const n = balls.length, cols = Math.min(4, n), rows = Math.ceil(n / cols);
+  const balls = [...Array(r).fill('R'), ...Array(b).fill(cls2)]; if (gone) balls.push('out' + gone);
+  const n = balls.length, cols = Math.min(n > 12 ? 8 : 4, Math.max(1,n)), rows = Math.ceil(n / cols);
   const rad = Math.max(4, Math.min((w - 2*ins - 12) / (cols*2.3), (h - 14) / (rows*2.3)));
   balls.forEach((c, i) => { const row = Math.floor(i / cols), col = i % cols, inRow = Math.min(cols, n - row*cols);
     const x = cx + (col - (inRow-1)/2) * rad*2.3, y = bot - 10 - rad - row * rad*2.2;
@@ -971,16 +975,23 @@ function trainerCompute(frame, v){
 }
 scene('k9', {card:'9', title:'Zielformel zuerst', grp:'Training', hint:'Links die Zielformel mit Leerstellen, rechts die Aufgabe: Tippe die Elemente an, die die Leerstellen füllen',
  html: UI.q('Welche Zielformel passt – und welche Elemente im Text füllen ihre Leerstellen?') +
-  `<div><div class="lbl">Aufgabe wählen</div>${UI.seg('k9t', TASKS.map(t => t.id))}<div class="row" style="margin-top:6px">${UI.btn('k9rand','Zufällige Aufgabe',true)}</div></div>` +
+  `<div class="row">${UI.btn('k9start','Formel-Jagd starten · 7 Aufgaben')}${UI.btn('k9joker','Joker: Fehlerweg aufdecken',true)}${UI.btn('k9next','Weiter →')}${UI.btn('k9stop','Spiel beenden',true)}</div>` +
+  `<div class="task" id="k9hud" hidden></div>` +
+  `<div id="k9pick"><div class="lbl">Aufgabe wählen</div>${UI.seg('k9t', TASKS.map(t => t.id))}<div class="row" style="margin-top:6px">${UI.btn('k9rand','Zufällige Aufgabe',true)}</div></div>` +
   `<div class="task" id="k9text"></div>` +
   `<div><div class="lbl">Schritt 1 · Zielformel (Rahmen) wählen</div><div class="frames" id="k9frames">${Object.entries(FRAMES).map(([k,f]) => `<button data-f="${k}"><b>${f.name}</b><span>${f.f}</span></button>`).join('')}</div></div>` +
   `<div id="k9s2" hidden><div class="lbl">Schritt 2 · Elemente im Text antippen, die die Leerstellen füllen</div><div class="slots" id="k9slots"></div><div class="seg" id="k9opts" style="margin-top:6px"></div></div>` +
   `<div id="k9s3" hidden><div class="lbl">Schritt 3 · Formel ausformulieren und rechnen</div><div class="eq col" id="k9eq"></div><div class="row" style="margin-top:8px">${UI.btn('k9go','Zur Karte mit diesen Werten')}${UI.btn('k9kw','Signalwörter zeigen',true)}</div></div>` +
   UI.st('k9st'),
- init(){ const S = this; S.t = 0; S.reset();
-  onSeg('k9t', v => { S.t = v; S.reset(); S.upd(); });
-  $('k9rand').addEventListener('click', () => { S.t = Math.floor(Math.random()*TASKS.length); setSeg('k9t', S.t); S.reset(); S.upd(); });
-  $('k9frames').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (!b || S.step !== 1) return; S.frameTry = b.dataset.f; if (b.dataset.f === S.task().frame) { S.frame = b.dataset.f; S.step = 2; } S.upd(); });
+ init(){ const S = this; S.t = 0; S.game = null; S.reset();
+  onSeg('k9t', v => { if (S.game) return; S.t = v; S.reset(); S.upd(); });
+  $('k9rand').addEventListener('click', () => { if (S.game) return; S.t = Math.floor(Math.random()*TASKS.length); setSeg('k9t', S.t); S.reset(); S.upd(); });
+  $('k9start').addEventListener('click', () => S.startGame());
+  $('k9next').addEventListener('click', () => S.nextTask());
+  $('k9stop').addEventListener('click', () => { S.game = null; S.reset(); S.upd(); });
+  $('k9joker').addEventListener('click', () => { const G = S.game; if (!G || G.jokers < 1 || S.jokerText || S.step < 2) return; G.jokers--; S.jokerText = S.wrongWay(S.task()); S.upd(); });
+  $('k9frames').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (!b || S.step !== 1) return; S.frameTry = b.dataset.f; S.frameTries++;
+    if (b.dataset.f === S.task().frame) { S.frame = b.dataset.f; S.step = 2; S.score(S.frameTries === 1, 20); } else S.score(false, 0); S.upd(); });
   $('k9text').addEventListener('click', e => { const b = e.target.closest('.tok'); if (!b || S.step !== 2) return; S.fill(b.dataset.t, b.dataset.t === 'num' ? parseNum(b.dataset.v) : b.dataset.v, b); });
   $('k9slots').addEventListener('click', e => { const b = e.target.closest('.slot'); if (!b || S.step !== 2) return; S.active = +b.dataset.i; S.upd(); });
   $('k9opts').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || S.step !== 2) return; S.fill('choice', b.dataset.v); });
@@ -988,18 +999,52 @@ scene('k9', {card:'9', title:'Zielformel zuerst', grp:'Training', hint:'Links di
   $('k9kw').addEventListener('click', () => { S.showKw = !S.showKw; S.upd(); });
  },
  task(){ return TASKS[this.t]; },
- reset(){ this.step = 1; this.frame = null; this.frameTry = null; this.vals = {}; this.state = {}; this.active = 0; this.showKw = false; this.wrongTok = null; },
+ reset(){ this.step = 1; this.frame = null; this.frameTry = null; this.frameTries = 0; this.tries = {}; this.vals = {}; this.state = {}; this.active = 0; this.showKw = false; this.wrongTok = null; this.jokerText = null; },
  show(){ this.upd(); },
+ // ---- Formel-Jagd: Spielmodus ----
+ startGame(){ const S = this; const byFrame = {}; TASKS.forEach((t,i) => (byFrame[t.frame] = byFrame[t.frame] || []).push(i));
+  const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+  const q = Object.keys(FRAMES).map(f => pick(byFrame[f])); q.push(pick(byFrame[Math.random() < 0.5 ? 'bereich' : 'sigma'].filter(i => !q.includes(i))));
+  for (let i = q.length-1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [q[i],q[j]] = [q[j],q[i]]; }
+  S.game = {queue:q, idx:0, score:0, streak:0, best:0, ok:0, bad:0, jokers:0, per:{}, done:false, t0:Date.now()};
+  S.t = q[0]; setSeg('k9t', S.t); S.reset(); S.upd(); },
+ score(firstTry, pts){ const G = this.game; if (!G) return; const f = this.task().frame; G.per[f] = G.per[f] || {ok:0,bad:0};
+  if (pts > 0) { if (firstTry) { G.score += pts + (G.streak >= 3 ? 5 : 0); G.streak++; G.best = Math.max(G.best, G.streak); if (G.streak % 3 === 0) G.jokers++; } G.ok++; G.per[f].ok++; }
+  else { G.streak = 0; G.bad++; G.per[f].bad++; } },
+ nextTask(){ const S = this, G = S.game; if (!G) return; if (G.idx >= G.queue.length-1) { G.done = true; S.saveRun(); S.upd(); return; } G.idx++; S.t = G.queue[G.idx]; setSeg('k9t', S.t); S.reset(); S.upd(); },
+ medal(f){ const G = this.game, r = G && G.per[f]; if (!r) return '–'; return r.bad === 0 ? '🥇 Gold' : r.bad <= 1 ? '🥈 Silber' : r.bad <= 3 ? '🥉 Bronze' : '· noch üben'; },
+ grade(){ const G = this.game, q = G.ok / Math.max(1, G.ok + G.bad); return q >= 0.9 ? 'sehr gut' : q >= 0.75 ? 'gut' : q >= 0.6 ? 'befriedigend' : 'weiter üben'; },
+ loadRuns(){ try { return JSON.parse(localStorage.getItem('sw-formeljagd') || '{"best":0,"runs":[]}'); } catch (e) { return {best:0, runs:[]}; } },
+ saveRun(){ const G = this.game; try { const d = this.loadRuns(); d.best = Math.max(d.best || 0, G.score); d.runs = [{date:new Date().toLocaleDateString('de-DE'), score:G.score, ok:G.ok, bad:G.bad}, ...(d.runs || [])].slice(0,3); localStorage.setItem('sw-formeljagd', JSON.stringify(d)); } catch (e) {} },
+ wrongWay(T){ const v = {}; T.slots.forEach(s => v[s.id] = s.ok); const f = T.frame;
+  if (f === 'pfad') { const w = Object.assign({}, v, {modus: v.modus === 'ohne Zurücklegen' ? 'mit Zurücklegen' : 'ohne Zurücklegen'}); return `Typischer Fehler: „${v.modus}“ überlesen und wie „${w.modus}“ gerechnet → ${trainerCompute('pfad', w).result} statt ${trainerCompute('pfad', v).result}.`; }
+  if (f === 'bern') { const one = Math.pow(v.p, v.k) * Math.pow(1-v.p, v.n-v.k); return `Typischer Fehler: Binomialkoeffizient vergessen, nur ein Pfad gezählt → ${fix(one,4)} statt ${choose(v.n,v.k)} · ${fix(one,4)} = ${fix(choose(v.n,v.k)*one,4)}.`; }
+  if (f === 'bereich') { const m = T.go.set.m, [wa,wb] = wrongSet(m, v.n, T.go.set.k, T.go.set.k2), c = cdf(binom(v.n, v.p)); return `Typischer Fehler: Grenze um eins verschoben („${v.ev}“ falsch übersetzt) → P(${Math.max(0,wa)} ≤ X ≤ ${Math.min(v.n,wb)}) = ${fix(pRange(c,Math.max(0,wa),Math.min(v.n,wb)),4)} statt ${trainerCompute('bereich', v).result}.`; }
+  if (f === 'sigma') { const mu = v.n*v.p, sd = Math.sqrt(v.n*v.p*(1-v.p)), z = +v.z;
+    if (Math.abs(sd - Math.round(sd)) < 1e-9) { const wz = z === 1 ? 2 : z - 1; return `Typischer Fehler: Sicherheit und Umgebung verwechselt (${wz}σ statt ${z}σ) → ${trainerCompute('sigma', Object.assign({}, v, {z: wz})).result} statt ${trainerCompute('sigma', v).result}.`; }
+    const sr = Math.round(sd); return `Typischer Fehler: σ vor dem Rechnen auf ${sr} gerundet → Grenzen ${fmt(mu - z*sr,1)} … ${fmt(mu + z*sr,1)} statt ${fmt(mu - z*sd,2)} … ${fmt(mu + z*sd,2)}; richtig: ${trainerCompute('sigma', v).result}.`; }
+  if (f === 'ex') { const ea = sum([v.a1,v.a2,v.a3].map((a,i) => a*fracVal(v['p'+(i+1)]))); return `Typischer Fehler: Auszahlung statt Nettogewinn eingesetzt → E = ${fmt(ea,2)} € statt ${trainerCompute('ex', v).result}. Der Einsatz ${v.e} € muss von jeder Auszahlung abgezogen werden.`; }
+  return `Typischer Fehler: Einsatz aus E(X) „abgelesen“ statt die Bedingung E(X) = 0 aufzulösen: Einsatz = Σ Auszahlung · P → ${trainerCompute('fair', v).result}.`; },
  fill(kind, value, tokEl){ const S = this, T = S.task(), sl = T.slots[S.active]; if (!sl) return;
   const matchKind = (sl.kind === kind) || (sl.kind === 'choice' && kind === 'choice');
   if (!matchKind) { stat('k9st', `<b>Falscher Typ.</b> Die Leerstelle „${sl.label}“ braucht ${sl.kind === 'num' ? 'eine Zahl' : sl.kind === 'phrase' ? 'eine Formulierung aus dem Text' : 'eine Auswahl unten'}.`, 'bad'); return; }
   const ok = sl.kind === 'num' ? Math.abs(value - sl.ok) < 1e-9 : String(value) === String(sl.ok);
-  S.vals[sl.id] = value; S.state[sl.id] = ok ? 'ok' : 'bad';
+  S.vals[sl.id] = value; S.state[sl.id] = ok ? 'ok' : 'bad'; S.tries[sl.id] = (S.tries[sl.id] || 0) + 1;
+  S.score(ok && S.tries[sl.id] === 1, ok ? 10 : 0);
   if (ok) { stat('k9st', `<b>${sl.label} = ${showVal(value)}</b> ✓`, 'ok'); const next = T.slots.findIndex((s,i) => i > S.active && S.state[s.id] !== 'ok'); const any = T.slots.findIndex(s => S.state[s.id] !== 'ok'); S.active = next >= 0 ? next : any; if (T.slots.every(s => S.state[s.id] === 'ok')) S.step = 3; }
   else { stat('k9st', `<b>Nicht ${sl.label}.</b> ${sl.tip || 'Lies den Satz noch einmal: Welches Element bestimmt diese Leerstelle?'}`, 'bad'); S.wrongTok = tokEl || null; }
   S.upd();
  },
- upd(){ const S = this, T = S.task(), F = FRAMES[T.frame]; setSeg('k9t', S.t);
+ upd(){ const S = this, T = S.task(), F = FRAMES[T.frame], G = S.game; setSeg('k9t', S.t);
+  // Spielmodus: Anzeige, Knöpfe, Endstand
+  $('k9pick').hidden = !!G; $('k9start').hidden = !!G && !G.done; $('k9stop').hidden = !G; $('k9joker').hidden = !G || G.done; $('k9next').hidden = !G || G.done || S.step < 3;
+  if (G) { $('k9joker').disabled = G.jokers < 1 || !!S.jokerText || S.step < 2; $('k9joker').textContent = `Joker: Fehlerweg aufdecken (${G.jokers})`; $('k9next').textContent = G.idx >= G.queue.length-1 ? 'Lauf abschließen' : 'Weiter →'; $('k9start').textContent = 'Neuer Lauf';
+    const hud = $('k9hud'); hud.hidden = false;
+    if (!G.done) hud.innerHTML = `<div class="hud"><span>Aufgabe <b>${G.idx+1}</b>/${G.queue.length}</span><span>Punkte <b>${G.score}</b></span><span class="${G.streak >= 3 ? 'fire' : ''}">Serie <b>${G.streak}</b>${G.streak >= 3 ? ' 🔥 +5' : ''}</span><span>Joker <b>${G.jokers}</b></span><span>Kugeln <b class="ca">${G.ok}</b> / <b class="m">${G.bad}</b></span></div>` + (S.jokerText ? `<p class="note" style="margin-top:6px"><b>Joker:</b> ${S.jokerText}</p>` : '');
+    else { const d = S.loadRuns(); hud.innerHTML = `<b>Lauf beendet · ${G.score} Punkte · ${S.grade()}</b><div class="hud" style="margin-top:4px"><span>richtig beim 1. Versuch <b class="ca">${G.ok}</b></span><span>Fehlversuche <b class="m">${G.bad}</b></span><span>längste Serie <b>${G.best}</b></span><span>Zeit <b>${Math.round((Date.now()-G.t0)/60000)} min</b></span></div><div class="lbl" style="margin-top:8px">Medaillen je Zielformel</div><div class="medals">${Object.entries(FRAMES).map(([k,f]) => `<div><span>${S.medal(k)}</span> ${f.name}</div>`).join('')}</div><div class="lbl" style="margin-top:8px">Bestenliste (dieses Gerät)</div><div class="hud"><span>Rekord <b>${d.best || 0}</b></span>${(d.runs || []).map(r => `<span class="m">${r.date}: ${r.score} P (${r.ok}/${r.ok+r.bad})</span>`).join('')}</div>`; }
+  } else $('k9hud').hidden = true;
+  const done = !!(G && G.done); $('k9text').hidden = done; $('k9frames').parentElement.hidden = done; $('k9st').hidden = done;
+  if (done) { $('k9s2').hidden = true; $('k9s3').hidden = true; S.draw(T, F, null); return; }
   // Aufgabentext mit antippbaren Elementen
   const used = new Set(Object.entries(S.vals).filter(([id,v]) => S.state[id] === 'ok').map(([id,v]) => String(v)));
   const plain = T.text.replace(/\{([^}]+)\}|\[([^\]]+)\]/g, (m,a,b) => a || b);
@@ -1017,7 +1062,17 @@ scene('k9', {card:'9', title:'Zielformel zuerst', grp:'Training', hint:'Links di
   if (S.step === 3) { const R = trainerCompute(T.frame, S.vals); lines('k9eq', [...R.L, `<b>Ergebnis:</b> ${R.result}`, ...R.chips]); $('k9go').textContent = `Zur Karte ${F.card} mit diesen Werten`; stat('k9st', `<b>Alle Leerstellen gefüllt.</b> Rahmen: ${F.name}. Jetzt Formel mit Buchstaben, dann Zahlen einsetzen, dann Ergebnis mit Antwortsatz.`, 'ok'); }
   S.draw(T, F, S.step === 3 ? trainerCompute(T.frame, S.vals) : null);
  },
- draw(T, F, R){ clear(); const S = this;
+ draw(T, F, R){ clear(); const S = this, G = S.game;
+  if (G && G.done) { // Endstand: große Urne mit allen Kugeln, Medaillen daneben
+    svg.append(T_(450, 36, `Formel-Jagd beendet: ${G.score} Punkte · ${S.grade()}`, 't b', 'middle', 22));
+    drawUrn(250, 300, 300, 230, Math.min(G.ok, 40), Math.min(G.bad, 40), null, 'G');
+    svg.append(T_(250, 445, `${G.ok} orange (richtig beim 1. Versuch) · ${G.bad} grau (Fehlversuche)`, 't m', 'middle', 13));
+    Object.entries(FRAMES).forEach(([k,f],i) => { const y = 120 + i*56; const r = G.per[k]; svg.append(el('rect', {x:470, y:y-22, width:400, height:46, rx:9, class:'colbg'})); svg.append(T_(486, y-4, f.name, 't b', 'start', 14)); svg.append(T_(486, y+14, S.medal(k) + (r ? ` · ${r.ok} richtig, ${r.bad} Fehlversuche` : ''), 't m', 'start', 12)); });
+    svg.append(T_(450, 520, 'Ab 3 richtigen in Folge gibt es +5 Bonus und einen Joker · Fehlversuche kosten keine Punkte, nur die Serie', 't m', 'middle', 12));
+    return; }
+  if (G) { // Spielanzeige: Punkte links oben, Urne rechts oben
+    svg.append(T_(20, 24, `Aufgabe ${G.idx+1}/${G.queue.length} · ${G.score} Punkte · Serie ${G.streak}${G.streak >= 3 ? ' 🔥' : ''}`, 't b', 'start', 14));
+    drawUrn(830, 52, 110, 60, Math.min(G.ok, 24), Math.min(G.bad, 24), null, 'G'); svg.append(T_(830, 94, `${G.ok} / ${G.bad}`, 't mono m', 'middle', 11)); }
   svg.append(T_(450, 30, S.step === 1 ? 'Schritt 1: Welche Zielformel ist der Rahmen?' : `Zielformel: ${F.name}`, 't b', 'middle', 18));
   if (S.step === 1) { Object.values(FRAMES).forEach((f,i) => { const y = 80 + i*74; svg.append(el('rect', {x:60, y:y-24, width:780, height:60, rx:10, class:'colbg'})); svg.append(T_(80, y-6, f.name, 't b', 'start', 15)); svg.append(T_(80, y+16, f.f, 't mono m', 'start', 13)); }); return; }
   svg.append(el('rect', {x:40, y:56, width:820, height:54, rx:10, class:'colbg'})); svg.append(T_(450, 83, F.f, 't mono b', 'middle', 19));

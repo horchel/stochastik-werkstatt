@@ -61,7 +61,7 @@ sie installieren; ab dann läuft sie offline vom Startbildschirm.
 
 Übungsklausuren C und D liegen als PDF im Ordner klausuren/ und sind auf Karte 8 verlinkt.
 
-Direkt zu einer Karte springen: Adresse mit #k1 … #k9 ergänzen (#k9 = Klausur-Trainer „Zielformel zuerst“),
+Direkt zu einer Karte springen: Adresse mit #k1 … #k9 ergänzen (#k9 = Klausur-Trainer „Zielformel zuerst“ mit Spielmodus „Formel-Jagd“),
 z. B.  .../stochastik-werkstatt/#k5  (mindestens / höchstens …).
 
 Update einspielen: neue index.html hochladen und in sw.js die Versionsnummer
