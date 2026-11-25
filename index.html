@@ -421,6 +421,18 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
   if (selP.length > 1) L.push(`<span class="m">2. Pfadregel (addieren):</span> P(E) = P(Pfad₁) + P(Pfad₂) + … → P(${EVN[S.ev]}) = ${selP.map(q => 'P(' + q.key + ')').join(' + ')} = ${selP.map(q => frac(q.num,q.den)).join(' + ')} = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
   else L.push(`P(${EVN[S.ev]}) = P(${selP[0].key}) = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
   if (S.ev === 2) { const bb = P[3]; L.push(`<span class="m">Gegenereignis:</span> P(E) = 1 − P(Ē) → P(mindestens eine rote) = 1 − P(BB) = 1 − ${frac(bb.num,den)} = ${frac(den-bb.num,den)}`); }
+  // Bernoulli-Sicht: der Baum mit Zurücklegen ist eine Bernoulli-Kette mit n = 2 und p = r/N
+  const pr = S.r / N, kmap = {0:[2], 1:[1], 3:[0,2], 4:[0]}, bern = k => choose(2,k) * Math.pow(pr,k) * Math.pow(1-pr,2-k);
+  if (S.mode === 1) {
+    const ks = kmap[S.ev], bval = S.ev === 2 ? 1 - bern(0) : sum(ks.map(bern));
+    L.push(`<span class="m">Warum Bernoulli?</span> Jeder Zug ist derselbe Versuch mit zwei Ausgängen: rot = Treffer mit p = ${S.r}/${N} = ${fmt(pr,3)}, blau = Niete mit 1 − p = ${S.b}/${N}. Die Züge sind unabhängig, n = 2 ist fest ⇒ der Baum ist eine Bernoulli-Kette, X = Anzahl rote Kugeln.`);
+    L.push(`<span class="m">Im Baum:</span> Jeder Pfad mit k roten Kugeln hat denselben Wert p<sup>k</sup> · (1 − p)<sup>2−k</sup>. Die 2. Pfadregel addiert so viele dieser gleichen Werte, wie es Pfade mit k roten gibt – diese Anzahl ist (2 über k). Anzahl × Pfadwert = Bernoulli-Formel.`);
+    L.push(`<span class="m">Verallgemeinerung:</span> P(X = k) = (n über k) · p<sup>k</sup> · (1 − p)<sup>n−k</sup>. Für n = 2 kann man den Baum zeichnen, für n = 18 (Klausur, Aufgabe 5) hat er 262 144 Pfade – die Formel zählt sie, ohne zu zeichnen.`);
+    if (S.ev === 2) L.push(`<span class="m">Bernoulli-Rechnung:</span> P(mindestens eine rote) = 1 − P(X = 0) = 1 − (2 über 0) · ${fmt(pr,3)}⁰ · ${fmt(1-pr,3)}² = 1 − ${fix(bern(0),4)} = <b>${fix(bval,4)}</b>`);
+    else L.push(`<span class="m">Bernoulli-Rechnung:</span> P(${EVN[S.ev]}) = ${ks.map(k => `(2 über ${k}) · ${fmt(pr,3)}${sup(k)} · ${fmt(1-pr,3)}${sup(2-k)}`).join(' + ')} = ${ks.map(k => `${choose(2,k)} · ${fix(Math.pow(pr,k)*Math.pow(1-pr,2-k),4)}`).join(' + ')} = <b>${fix(bval,4)}</b>`);
+    L.push(cond('Bernoulli-Kette: n fest · Treffer/Niete · p in jedem Zug gleich · unabhängig – mit Zurücklegen erfüllt', true));
+    L.push(cond(`Pfadregeln und Bernoulli-Formel liefern denselben Wert: ${frac(tot,den)} = ${fix(tot/den,4)} = ${fix(bval,4)}`, Math.abs(tot/den - bval) < 1e-6, 'Kontrolle'));
+  } else L.push(cond(`Bernoulli-Formel hier nicht anwendbar: ohne Zurücklegen ändert sich p im 2. Zug (${S.r}/${N} → ${S.r-1}/${N-1} nach R) – Pfadregeln verwenden. Mit Zurücklegen wäre der Baum eine Bernoulli-Kette.`, false));
   L.push(cond(S.mode === 0 ? `ohne Zurücklegen ⇒ 2. Zug: Nenner N − 1 = ${N-1}, Zähler der gezogenen Farbe − 1` : `mit Zurücklegen ⇒ Brüche in beiden Zügen gleich (Nenner N = ${N})`));
   L.push(cond(`Summe aller Pfade = 1: ${P.map(q => frac(q.num,q.den)).join(' + ')} = ${frac(sum(P.map(q => q.num)),den)}`, sum(P.map(q => q.num)) === den, 'Kontrolle'));
   lines('k1eq', L);
@@ -453,6 +465,7 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
     svg.append(T(L2[k][0], y0, `Ergebnis ${k}`, cls, 'middle', 13));
     svg.append(T(L2[k][0], y0+20, `${q.f1[0]}/${q.f1[1]} · ${q.f2[0]}/${q.f2[1]}`, cls, 'middle', 13));
     svg.append(T(L2[k][0], y0+40, `= ${frac(q.num,q.den)} ≈ ${fmt(q.num/q.den,3)}`, cls, 'middle', 13));
+    if (S.mode === 1) svg.append(T(L2[k][0], y0+60, `Bernoulli: ${k === 'RR' ? 'p · p = p²' : k === 'BB' ? '(1−p) · (1−p) = (1−p)²' : k === 'RB' ? 'p · (1−p)' : '(1−p) · p'}`, 't mono' + (on ? ' ca' : ' m'), 'middle', 11));
   }
   // Urnen: Ausgangsurne oben links, daneben die Urne nach dem 1. Zug (Platz der gezogenen Kugel gestrichelt)
   drawUrn(118, 62, 124, 78, S.r, S.b);
