@@ -29,6 +29,11 @@ WEG A: Nur am eigenen PC/Laptop nutzen (sofort, ohne Hosting)
 --------------------------------------------------------------
 WEG B: Als echte App auf Handy und PC (empfohlen für den Schüler)
 --------------------------------------------------------------
+Bereits online (GitHub Pages, Repository horchel/stochastik-werkstatt):
+    https://horchel.github.io/stochastik-werkstatt/
+Daneben liegt die Vektor-Werkstatt:
+    https://horchel.github.io/vektor-werkstatt/
+--------------------------------------------------------------
 Die App muss einmal unter einer https-Adresse liegen. Danach kann jeder
 sie installieren; ab dann läuft sie offline vom Startbildschirm.
 
