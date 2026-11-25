@@ -178,7 +178,7 @@ const fact = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
 // ---------- SVG-Bausteine ----------
 const NS = 'http://www.w3.org/2000/svg', svg = $('svg');
 function el(tag, attrs, ...kids){ const e = document.createElementNS(NS, tag); for (const k in (attrs||{})) { if (attrs[k] != null) e.setAttribute(k, attrs[k]); } for (const c of kids) e.append(typeof c === 'string' ? document.createTextNode(c) : c); return e; }
-function T(x,y,s,cls='t',anchor='middle',size){ const a = {x,y,class:cls,'text-anchor':anchor,'dominant-baseline':'middle'}; if (size) a.style = `font-size:${size}px`; return el('text', a, s); }
+function T(x,y,s,cls='t',anchor='middle',size,fill){ const a = {x,y,class:cls,'text-anchor':anchor,'dominant-baseline':'middle'}; if (size || fill) a.style = (size ? `font-size:${size}px;` : '') + (fill ? `fill:var(${fill})` : ''); return el('text', a, s); }
 function clear(){ svg.replaceChildren(); }
 const PL = {L:72, R:872, T:40, B:488};
 function niceTicks(ymax){ const raw = ymax/5, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/p, s = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; const out = []; for (let v = 0; v <= ymax + 1e-9; v += s) out.push(v); return {ticks: out, dec: Math.max(0, -Math.floor(Math.log10(s)))}; }
@@ -357,13 +357,40 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
 // Karte 2: Zufallsgröße, Erwartungswert, Standardabweichung
 // =====================================================================
 const GAMES = [
- {name:'Würfel (Klausur A)', e:3, out:[{l:'1, 2 oder 3', n:3, d:6, pay:0}, {l:'4 oder 5', n:2, d:6, pay:4}, {l:'6', n:1, d:6, pay:8}]},
- {name:'Lose (Klausur B)', e:4, out:[{l:'Niete (4 Lose)', n:4, d:8, pay:0}, {l:'3 Lose', n:3, d:8, pay:4}, {l:'1 Los', n:1, d:8, pay:12}]},
- {name:'Zwei Münzen', e:2, out:[{l:'0× Kopf', n:1, d:4, pay:0}, {l:'1× Kopf', n:2, d:4, pay:2}, {l:'2× Kopf', n:1, d:4, pay:5}]}
+ {name:'Würfel (Klausur A)', e:3, kind:'die', scene:'Fairer Würfel, einmal geworfen · jede Augenzahl 1/6',
+  task: e => `Ein fairer Würfel wird einmal geworfen. Bei 1, 2 oder 3 gibt es keine Auszahlung, bei 4 oder 5 werden 4 € ausgezahlt, bei 6 werden 8 € ausgezahlt. Der Einsatz beträgt ${eur(e)}.`,
+  items: [1,2,3,4,5,6].map(f => ({face:f, pay: f <= 3 ? 0 : f <= 5 ? 4 : 8})),
+  out:[{l:'1, 2 oder 3', n:3, d:6, pay:0}, {l:'4 oder 5', n:2, d:6, pay:4}, {l:'6', n:1, d:6, pay:8}]},
+ {name:'Lose (Klausur B)', e:4, kind:'ticket', scene:'Lostrommel mit acht Losen · jedes Los 1/8',
+  task: e => `In einer Trommel liegen acht gleich wahrscheinliche Lose. Vier sind Nieten ohne Auszahlung, drei bringen jeweils 4 € und eines bringt 12 €. Der Einsatz für ein Los beträgt ${eur(e)}.`,
+  items: [...Array(4).fill({label:'Niete', pay:0}), ...Array(3).fill({label:'4 €', pay:4}), {label:'12 €', pay:12}],
+  out:[{l:'Niete (4 Lose)', n:4, d:8, pay:0}, {l:'3 Lose', n:3, d:8, pay:4}, {l:'1 Los', n:1, d:8, pay:12}]},
+ {name:'Zwei Münzen', e:2, kind:'coins', scene:'Zwei Münzen, einmal geworfen · jede Kombination 1/4',
+  task: e => `Zwei Münzen werden gleichzeitig geworfen. Zeigt keine Münze Kopf, gibt es nichts; bei einmal Kopf werden 2 € ausgezahlt, bei zweimal Kopf 5 €. Der Einsatz beträgt ${eur(e)}.`,
+  items: ['KK','KZ','ZK','ZZ'].map(s => ({combo:s, pay: [0,2,5][(s.match(/K/g)||[]).length]})),
+  out:[{l:'0× Kopf', n:1, d:4, pay:0}, {l:'1× Kopf', n:2, d:4, pay:2}, {l:'2× Kopf', n:1, d:4, pay:5}]}
 ];
+const PIPS = {1:[[0,0]], 2:[[-1,-1],[1,1]], 3:[[-1,-1],[0,0],[1,1]], 4:[[-1,-1],[1,-1],[-1,1],[1,1]], 5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]], 6:[[-1,-1],[-1,0],[-1,1],[1,-1],[1,0],[1,1]]};
+// Ein Ergebnis des Spielgeräts als Symbol: Würfelseite, Los oder Münzpaar
+function drawItem(kind, it, x, y, col){
+  const g = el('g');
+  if (kind === 'die') {
+    g.append(el('rect', {x:x-22, y:y-22, width:44, height:44, rx:8, class:'urn', style:`stroke:var(${col});stroke-width:2.5`}));
+    PIPS[it.face].forEach(([a,b]) => g.append(el('circle', {cx:x+a*12, cy:y+b*12, r:4.2, style:`fill:var(${col})`})));
+  } else if (kind === 'ticket') {
+    g.append(el('rect', {x:x-27, y:y-18, width:54, height:36, rx:4, class:'urn', style:`stroke:var(${col});stroke-width:2.5`}));
+    g.append(el('line', {x1:x-27, x2:x+27, y1:y+10, y2:y+10, style:`stroke:var(${col});stroke-width:1.5;stroke-dasharray:3 3`}));
+    g.append(T(x, y-3, it.label, 't b', 'middle', 12, col));
+  } else {
+    [0,1].forEach(i => { const cx = x + (i ? 19 : -19), k = it.combo[i] === 'K';
+      g.append(el('circle', {cx, cy:y, r:16, class:'urn', style:`stroke:var(${col});stroke-width:2.5${k ? `;fill:color-mix(in srgb,var(${col}) 28%,var(--surface))` : ''}`}));
+      g.append(T(cx, y+1, it.combo[i], 't b', 'middle', 14, k ? col : '--muted')); });
+  }
+  svg.append(g);
+}
 scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen', hint:'Rote Linie: E(X) · orange Klammer: μ ± σ',
  html: UI.q('Lohnt sich das Spiel auf lange Sicht – und wie stark schwankt der Gewinn um den Erwartungswert?') +
-  UI.seg('k2g', GAMES.map(g => g.name)) + UI.sl('k2e','Einsatz pro Spiel in €',0,10,0.5,3) +
+  UI.seg('k2g', GAMES.map(g => g.name)) + `<div class="task" id="k2task"></div>` + UI.sl('k2e','Einsatz pro Spiel in €',0,10,0.5,3) +
   `<div class="tscroll"><table class="dist" id="k2tab"></table></div>` +
   `<div class="row">${UI.btn('k2next','Weiter')}${UI.btn('k2fair','Fairen Einsatz finden',true)}</div>` +
   `<div class="eq col" id="k2eq"></div>` + UI.st('k2st'),
@@ -377,6 +404,7 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
  dist(){ return GAMES[this.g].out.map(o => ({k: o.pay - this.e, p: o.n/o.d, f:[o.n,o.d], l:o.l, pay:o.pay})); },
  upd(){
   const S = this, D = S.dist(); setSl('k2e', S.e, 2);
+  $('k2task').innerHTML = `<b>Aufgabe:</b> ${GAMES[S.g].task(S.e)} Die Zufallsgröße X bezeichnet den Nettogewinn in Euro.`;
   const mu = sum(D.map(d => d.k*d.p)), va = sum(D.map(d => (d.k-mu)**2 * d.p)), sd = Math.sqrt(va);
   S.draw(D, mu, sd);
   const head = ['Ergebnis','Auszahl.','k','P(X = k)']; if (S.step >= 2) head.push('k · P'); if (S.step >= 3) head.push('(k − μ)² · P');
@@ -395,17 +423,22 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
     : `<b>E(X) = ${fmt(mu,2)} €:</b> Pro Spiel gewinnt die Spielerin auf lange Sicht im Mittel ${eur(mu)}. Das Spiel ist nicht fair, die Spielerin ist im Vorteil.`, Math.abs(mu) < 1e-9 ? 'ok' : mu < 0 ? 'bad' : 'ok');
  },
  draw(D, mu, sd){
-  clear(); const S = this, ks = D.map(d => d.k);
+  clear(); const S = this, ks = D.map(d => d.k), G = GAMES[S.g];
+  // Spielgerät: jedes Ergebnis als Symbol, eingefärbt nach Auszahlung
+  const pays = [...new Set(G.items.map(i => i.pay))].sort((a,b) => a-b), colOf = p => ['--muted','--vb','--va'][pays.indexOf(p)] || '--vc';
+  svg.append(T(450, 20, G.scene, 't m', 'middle', 13));
+  const ni = G.items.length, gap = G.kind === 'coins' ? 130 : G.kind === 'ticket' ? 76 : 70, x0 = 450 - (ni-1)*gap/2;
+  G.items.forEach((it,i) => { const x = x0 + i*gap; drawItem(G.kind, it, x, 66, colOf(it.pay)); svg.append(T(x, 108, it.pay ? eur(it.pay) : 'nichts', 't mono b', 'middle', 12, colOf(it.pay))); });
   const lo = Math.min(...ks, mu - sd) - 1.5, hi = Math.max(...ks, mu + sd) + 1.5;
-  const L = PL.L, R = PL.R, Tp = PL.T + 40, B = PL.B;
+  const L = PL.L, R = PL.R, Tp = 196, B = PL.B;
   const x = v => L + (v-lo)/(hi-lo) * (R-L), pmax = Math.max(...D.map(d => d.p)) * 1.3, y = v => B - (v/pmax) * (B-Tp);
   const bw = Math.min(70, (R-L)/(hi-lo) * 0.8);
   const tk = niceTicks(pmax); for (const v of tk.ticks) { svg.append(el('line', {x1:L, x2:R, y1:y(v), y2:y(v), class:'grid'})); svg.append(T(L-8, y(v), fmt(v,tk.dec), 't m mono', 'end', 12)); }
   svg.append(el('line', {x1:L, x2:R, y1:B, y2:B, class:'ax'}));
   const lstep = hi - lo > 16 ? 2 : 1;
   for (let v = Math.ceil(lo); v <= Math.floor(hi); v++) { svg.append(el('line', {x1:x(v), x2:x(v), y1:B, y2:B+5, class:'ax'})); if (v % lstep === 0) svg.append(T(x(v), B+16, fmt(v,0), 't m mono', 'middle', 12)); }
-  svg.append(T(R+10, B+16, 'k in €', 't m', 'start', 12)); svg.append(T(L-8, PL.T-18, 'P(X = k)', 't m', 'end', 12));
-  D.forEach(d => { svg.append(el('rect', {x:x(d.k)-bw/2, y:y(d.p), width:bw, height:B-y(d.p), rx:3, class:'bar'})); svg.append(T(x(d.k), y(d.p)-14, `${d.f[0]}/${d.f[1]}`, 't mono b')); svg.append(T(x(d.k), y(d.p)-32, `k = ${eur(d.k)}`, 't m', 'middle', 12)); });
+  svg.append(T(R+10, B+16, 'k in €', 't m', 'start', 12)); svg.append(T(L-8, Tp-44, 'P(X = k)', 't m', 'end', 12));
+  D.forEach(d => { svg.append(el('rect', {x:x(d.k)-bw/2, y:y(d.p), width:bw, height:B-y(d.p), rx:3, class:'bar', style:`fill:var(${colOf(d.pay)})`})); svg.append(T(x(d.k), y(d.p)-14, `${d.f[0]}/${d.f[1]}`, 't mono b')); svg.append(T(x(d.k), y(d.p)-32, `${eur(d.pay)} − ${eur(S.e)} = ${eur(d.k)}`, 't m', 'middle', 12)); });
   if (S.step >= 2) { svg.append(el('line', {x1:x(mu), x2:x(mu), y1:Tp-14, y2:B, class:'mu'})); svg.append(T(x(mu), Tp-26, `E(X) = ${fmt(mu,2)} €`, 't b ch')); }
   if (S.step >= 3) { const yb = Tp+4; svg.append(el('line', {x1:x(mu-sd), x2:x(mu+sd), y1:yb, y2:yb, class:'bnd'})); [mu-sd, mu+sd].forEach(v => svg.append(el('line', {x1:x(v), x2:x(v), y1:yb-6, y2:yb+6, class:'bnd'}))); svg.append(T(x(mu+sd)+8, yb, `σ = ${fmt(sd,2)} €`, 't mono ca', 'start', 12)); }
   svg.append(T(450, 536, `${GAMES[S.g].name} · Einsatz ${eur(S.e)}`, 't m'));
