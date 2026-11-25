@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15202A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stochastik">
+<meta name="description" content="Interaktive Szenen zu Wahrscheinlichkeit, Zufallsgrößen und Binomialverteilung">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Stochastik-Werkstatt</title>
+<style>html,body{margin:0}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+</head>
+<body>
+
+<style>
+/* Layout: Werkbank – links Kartenregister, Mitte Szene, rechts Steuerpult der gewählten Karte; schmal: untereinander */
+:root{
+  --bg:#EEF2EE; --surface:#FFFFFF; --stage:#F8FAF7; --ink:#15202A; --muted:#5A6771; --line:#D3DAD4;
+  --va:#E0590B; --vb:#1971C2; --vr:#2B8A3E; --vc:#9C36B5; --hit:#E03131;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1519; --surface:#172028; --stage:#0C1216; --ink:#E4EBEE; --muted:#93A1AB; --line:#2A3641;
+  --va:#FF8A3D; --vb:#4DABF7; --vr:#51CF66; --vc:#DA77F2; --hit:#FF6B6B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1519; --surface:#172028; --stage:#0C1216; --ink:#E4EBEE; --muted:#93A1AB; --line:#2A3641;
+  --va:#FF8A3D; --vb:#4DABF7; --vr:#51CF66; --vc:#DA77F2; --hit:#FF6B6B; color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:14px 24px}
+.wrap{max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 20px}
+h1{font-family:var(--f-display);font-weight:700;font-size:1.6rem;margin:0;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);font-size:.88rem}
+main{display:grid;grid-template-columns:200px minmax(0,1fr) 380px;gap:12px;align-items:start}
+nav{display:flex;flex-direction:column;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px}
+nav .grp{display:flex;flex-direction:column;gap:2px}
+nav .gl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:2px 6px}
+nav button{font:inherit;font-size:.86rem;text-align:left;border:0;background:transparent;color:var(--ink);padding:5px 8px;border-radius:7px;cursor:pointer;display:flex;gap:8px;align-items:baseline}
+nav button b{font-family:var(--f-mono);font-weight:500;font-size:.78rem;color:var(--muted);min-width:1.6em}
+nav button:hover{background:var(--bg)}
+nav button[aria-current="true"]{background:var(--ink);color:var(--surface)}
+nav button[aria-current="true"] b{color:var(--surface)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--vb);outline-offset:2px}
+.stage{position:relative;aspect-ratio:900/560;max-height:76vh;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stage svg{display:block;width:100%;height:100%}
+.mid{min-width:0;display:flex;flex-direction:column;gap:6px}
+.hint{font-size:.78rem;color:var(--muted);padding-inline:4px;min-height:1.2em}
+.panels{min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:13px;min-width:0}
+.ph .kn{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.ph h2{font-family:var(--f-display);font-weight:600;font-size:1.3rem;margin:0;line-height:1.2;text-wrap:balance}
+.q{margin:0;font-size:1rem;font-weight:500}
+.q span{display:block;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:2px}
+.ca{color:var(--va)} .cb{color:var(--vb)} .cr{color:var(--vr)} .cc{color:var(--vc)} .ch{color:var(--hit)}
+.eq{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.84rem;padding:10px;border-radius:8px;background:var(--bg);overflow-x:auto;line-height:1.6}
+.eq.col{flex-direction:column;align-items:flex-start;gap:4px}
+.eq .m{color:var(--muted)}
+.eq sub,.eq sup{font-size:.72em}
+.sl{display:grid;grid-template-columns:1fr auto;gap:0 10px;font-size:.86rem}
+.sl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.sl input{grid-column:1/-1;width:100%}
+input[type=range]{accent-color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:inherit;font-weight:600;font-size:.86rem;border:1px solid var(--ink);background:var(--ink);color:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:.88rem;cursor:pointer}
+.chk input{margin-top:4px}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:7px;padding:5px 9px;cursor:pointer}
+.seg button[aria-pressed="true"]{border-color:var(--ink);background:var(--bg);font-weight:600}
+.lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.status{font-size:.88rem;padding:10px 12px;border-radius:8px;border-left:4px solid var(--muted);background:var(--bg)}
+.status.ok{border-color:var(--vr)} .status.bad{border-color:var(--hit)}
+.steps{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px;font-size:.86rem}
+.steps li{opacity:.4}
+.steps li.on{opacity:1}
+.steps li.cur{opacity:1;font-weight:600}
+.steps .m{font-family:var(--f-mono);font-size:.82rem;font-weight:400}
+.note{font-size:.82rem;color:var(--muted);margin:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+.tscroll{overflow-x:auto;max-width:100%}
+.dist{border-collapse:collapse;font-family:var(--f-mono);font-size:.76rem;font-variant-numeric:tabular-nums}
+.dist th,.dist td{padding:3px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.dist th{font-weight:600;color:var(--muted)}
+.dist th:first-child,.dist td:first-child{text-align:left}
+.dist tr.foot td{font-weight:600;border-top:2px solid var(--ink)}
+.dist .h1{background:color-mix(in srgb,var(--va) 28%,transparent)}
+.dist tr.h1 td,.dist tr.h1 th{background:color-mix(in srgb,var(--va) 22%,transparent);font-weight:600;color:var(--ink)}
+.kw{width:100%;border-collapse:collapse;font-size:.86rem}
+.kw td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+.kw td:last-child{text-align:right;white-space:nowrap}
+.kw button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:2px 8px;cursor:pointer}
+.err{display:none;background:var(--hit);color:#fff;padding:8px 12px;border-radius:8px;font-size:.85rem}
+
+/* SVG-Szene */
+.t{fill:var(--ink);font-family:var(--f-body);font-size:14px}
+.t.m{fill:var(--muted)} .t.mono{font-family:var(--f-mono)} .t.b{font-weight:600} .t.nl{fill:#fff;font-weight:600}
+.t.ca{fill:var(--va)} .t.ch{fill:var(--hit)}
+.ax{stroke:var(--ink);stroke-width:1.2;fill:none} .grid{stroke:var(--line);stroke-width:1}
+.bar{fill:var(--vb)} .bar.on{fill:var(--va)} .bar.dim{fill:var(--line)} .bar.lt{fill:var(--vb)} .bar.gt{fill:var(--vr)} .bar.pick{cursor:pointer}
+.mu{stroke:var(--hit);stroke-width:2;stroke-dasharray:6 4;fill:none} .band{fill:var(--va);opacity:.14} .bnd{stroke:var(--va);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+.edge{stroke:var(--ink);stroke-width:2;fill:none} .edge.dim{opacity:.22} .edge.on{stroke:var(--va);stroke-width:5}
+.nd{stroke:var(--surface);stroke-width:2} .nd.R{fill:var(--va)} .nd.B{fill:var(--vb)} .nd.root{fill:var(--ink)}
+.chip{fill:var(--line)} .chip.T{fill:var(--va)}
+.colbg{fill:var(--va);opacity:.12}
+@media (max-width:1180px){main{grid-template-columns:minmax(0,1fr) 360px}nav{grid-column:1/-1;flex-direction:row;overflow-x:auto;padding:8px}nav .grp{flex-direction:row;align-items:center;flex:none}nav button{white-space:nowrap}}
+@media (max-width:860px){main{grid-template-columns:minmax(0,1fr)}.mid{display:contents}.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;aspect-ratio:auto;height:clamp(240px,42vh,420px);box-shadow:0 6px 14px -10px rgba(0,0,0,.35)}.hint{display:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Stochastik-Werkstatt</h1>
+  <p>Zu jeder Rezeptkarte eine Szene zum Schieben, Umschalten und Abspielen</p>
+</header>
+<div class="err" id="err"></div>
+<main>
+  <nav id="nav" aria-label="Rezeptkarten"></nav>
+  <div class="mid">
+    <div class="stage" id="stage">
+      <svg id="svg" viewBox="0 0 900 560" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Szene"></svg>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+  <div class="panels" id="panels"></div>
+</main>
+</div>
+
+<script>
+window.addEventListener('error', e => { const b = document.getElementById('err'); if (b) { b.style.display = 'block'; b.textContent = 'Fehler in der App: ' + e.message; } });
+</script>
+<script>
+(function(){
+'use strict';
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+
+// ---------- Zahlen & Formate ----------
+const fmt = (x,d=2) => { if (!isFinite(x)) return '–'; if (Math.abs(x) < 5e-7) x = 0; return (+x.toFixed(d)).toString().replace('-','−').replace('.',','); };
+const fix = (x,d=4) => isFinite(x) ? x.toFixed(d).replace('-','−').replace('.',',') : '–';
+const pct = (x,d=1) => fmt(100*x,d) + ' %';
+const eur = x => fmt(x,2) + ' €';
+const gcd = (a,b) => b ? gcd(b, a % b) : a;
+const frac = (n,d) => { if (n === 0) return '0'; const g = gcd(n,d); n /= g; d /= g; return d === 1 ? String(n) : n + '/' + d; };
+const sum = a => a.reduce((s,x) => s + x, 0);
+const range = (a,b) => { const r = []; for (let i = a; i <= b; i++) r.push(i); return r; };
+const SUP = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+const sup = n => String(n).split('').map(c => SUP[+c]).join('');
+const Fs = (n,p) => `F<sub>${n};${fmt(p,2)}</sub>`;
+const Bs = (n,p) => `B<sub>${n};${fmt(p,2)}</sub>`;
+
+// Binomialverteilung: Einzelwahrscheinlichkeiten rekursiv, kumuliert als Summe
+function binom(n,p){
+  const q = 1 - p, a = new Array(n+1).fill(0);
+  if (p <= 0) { a[0] = 1; return a; } if (p >= 1) { a[n] = 1; return a; }
+  let v = Math.pow(q, n); a[0] = v;
+  for (let k = 0; k < n; k++) { v = v * (n-k) / (k+1) * p / q; a[k+1] = v; }
+  return a;
+}
+function cdf(a){ const c = []; let s = 0; for (const x of a) { s += x; c.push(Math.min(1,s)); } return c; }
+const cF = (c,k) => k < 0 ? 0 : (k >= c.length ? 1 : c[k]);
+const pRange = (c,a,b) => a > b ? 0 : Math.max(0, cF(c,b) - cF(c,a-1));
+function choose(n,k){ if (k < 0 || k > n) return 0; let r = 1; for (let i = 1; i <= k; i++) r = r * (n-k+i) / i; return Math.round(r); }
+const fact = n => { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; };
+
+// ---------- SVG-Bausteine ----------
+const NS = 'http://www.w3.org/2000/svg', svg = $('svg');
+function el(tag, attrs, ...kids){ const e = document.createElementNS(NS, tag); for (const k in (attrs||{})) { if (attrs[k] != null) e.setAttribute(k, attrs[k]); } for (const c of kids) e.append(typeof c === 'string' ? document.createTextNode(c) : c); return e; }
+function T(x,y,s,cls='t',anchor='middle',size){ const a = {x,y,class:cls,'text-anchor':anchor,'dominant-baseline':'middle'}; if (size) a.style = `font-size:${size}px`; return el('text', a, s); }
+function clear(){ svg.replaceChildren(); }
+const PL = {L:72, R:872, T:40, B:488};
+function niceTicks(ymax){ const raw = ymax/5, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw/p, s = (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; const out = []; for (let v = 0; v <= ymax + 1e-9; v += s) out.push(v); return {ticks: out, dec: Math.max(0, -Math.floor(Math.log10(s)))}; }
+// Säulendiagramm über k = 0..n. o: {n, arr, cls(k), ymax, ylabel, pick}
+function hist(o){
+  const {n, arr} = o, W = PL.R - PL.L, w = W / (n+1), bw = Math.max(2, w * 0.76);
+  const ymax = o.ymax || (Math.max(...arr) * 1.12) || 1;
+  const y = v => PL.B - (v/ymax) * (PL.B - PL.T), x = k => PL.L + (k+0.5) * w, xv = v => PL.L + (v+0.5) * w;
+  const g = el('g'); const tk = niceTicks(ymax);
+  for (const v of tk.ticks) { g.append(el('line', {x1:PL.L, x2:PL.R, y1:y(v), y2:y(v), class:'grid'})); g.append(T(PL.L-8, y(v), fmt(v, tk.dec), 't m mono', 'end', 12)); }
+  g.append(el('line', {x1:PL.L, x2:PL.R, y1:PL.B, y2:PL.B, class:'ax'}));
+  const step = n <= 20 ? 1 : n <= 50 ? 5 : n <= 120 ? 10 : 20;
+  for (let k = 0; k <= n; k++) {
+    const c = o.cls ? o.cls(k) : '', h = Math.max(0, PL.B - y(arr[k]));
+    g.append(el('rect', {x:x(k)-bw/2, y:PL.B-h, width:bw, height:h, rx:Math.min(3, bw/3), class:'bar ' + c + (o.pick ? ' pick' : ''), 'data-k':k}));
+    if (k % step === 0) g.append(T(x(k), PL.B+16, String(k), 't m mono', 'middle', 12));
+  }
+  g.append(T(PL.R+12, PL.B+16, 'k', 't m'));
+  g.append(T(PL.L-8, PL.T-18, o.ylabel || 'P(X = k)', 't m', 'end', 12));
+  svg.append(g);
+  return {x, y, w, xv, ymax};
+}
+// μ-Linie und Umgebung μ ± zσ, ganzzahlig nach innen gerundet [a; b]
+function drawBand(H, mu, sd, z, a, b, label){
+  const x1 = H.xv(mu - z*sd), x2 = H.xv(mu + z*sd);
+  svg.append(el('rect', {x:x1, y:PL.T, width:Math.max(0,x2-x1), height:PL.B-PL.T, class:'band'}));
+  [x1, x2].forEach(x => svg.append(el('line', {x1:x, x2:x, y1:PL.T, y2:PL.B, class:'bnd'})));
+  svg.append(el('line', {x1:H.xv(mu), x2:H.xv(mu), y1:PL.T-6, y2:PL.B, class:'mu'}));
+  svg.append(T(H.xv(mu), PL.T-18, `μ = ${fmt(mu,2)}`, 't b ch'));
+  svg.append(T(x1-5, PL.T+12, `μ − ${z}σ = ${fmt(mu-z*sd,2)}`, 't mono ca', 'end', 12));
+  svg.append(T(x2+5, PL.T+12, `μ + ${z}σ = ${fmt(mu+z*sd,2)}`, 't mono ca', 'start', 12));
+  svg.append(T(450, PL.B+44, label, 't b'));
+}
+
+// ---------- Ablauf ----------
+let timers = [];
+function stopAll(){ timers.forEach(clearTimeout); timers = []; }
+function later(ms, fn){ const t = setTimeout(fn, reduce ? 0 : ms); timers.push(t); return t; }
+
+// ---------- UI-Bausteine ----------
+const UI = {
+  q: t => `<p class="q"><span>Kernfrage</span>${t}</p>`,
+  sl: (id,lab,min,max,step,val) => `<label class="sl"><span>${lab}</span><output id="${id}O"></output><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}"></label>`,
+  seg: (id,opts,sel=0) => `<div class="seg" id="${id}">${opts.map((o,i)=>`<button aria-pressed="${i===sel}" data-v="${i}">${o}</button>`).join('')}</div>`,
+  btn: (id,t,ghost) => `<button class="btn${ghost?' ghost':''}" id="${id}">${t}</button>`,
+  chk: (id,t) => `<label class="chk" id="${id}W"><input type="checkbox" id="${id}"> <span>${t}</span></label>`,
+  st: id => `<div class="status" id="${id}"></div>`,
+  leg: items => `<div class="legend">${items.map(([k,t])=>`<span style="--c:var(${k})"><i></i>${t}</span>`).join('')}</div>`
+};
+function onSeg(id, cb){ $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopAll(); setSeg(id, +b.dataset.v); cb(+b.dataset.v); }); }
+function setSeg(id, i){ [...$(id).children].forEach(x => x.setAttribute('aria-pressed', +x.dataset.v === i)); }
+function onSl(id, cb){ $(id).addEventListener('input', e => { stopAll(); cb(+e.target.value); }); }
+function setSl(id, v, d=1){ $(id).value = v; $(id+'O').textContent = fmt(v,d); }
+function stat(id, html, cls=''){ const e = $(id); e.className = 'status ' + cls; e.innerHTML = html; }
+function lines(id, arr){ $(id).innerHTML = arr.map(l => `<div>${l}</div>`).join(''); }
+function setSteps(id, i){ [...$(id).children].forEach((li,j) => { li.className = j < i-1 ? 'on' : j === i-1 ? 'cur' : ''; }); }
+
+// ---------- Szenenregister ----------
+const scenes = {}, order = [];
+function scene(id, def){ def.id = id; scenes[id] = def; order.push(id); }
+
+// =====================================================================
+// Karte 1: Baumdiagramm & Pfadregeln
+// =====================================================================
+const EV1 = [['RR'],['RB','BR'],['RR','RB','BR'],['RR','BB']], EVN = ['zwei rote','genau eine rote','mindestens eine rote','zwei gleiche'];
+scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint:'Orange Pfade gehören zum gewählten Ereignis',
+ html: UI.q('Wie wahrscheinlich ist ein Ergebnis aus zwei Zügen – und warum ändern sich die Brüche im zweiten Zug?') +
+  UI.sl('k1r','rote Kugeln in der Urne',1,6,1,3) + UI.sl('k1b','blaue Kugeln in der Urne',1,6,1,2) +
+  UI.seg('k1mode',['ohne Zurücklegen','mit Zurücklegen']) +
+  `<div><div class="lbl">Ereignis</div>${UI.seg('k1ev',EVN)}</div>` +
+  UI.chk('k1wrong','Fehlerweg: 2. Zug wie 1. Zug rechnen (Zurücklegen vergessen)') +
+  `<div class="row">${UI.btn('k1play','Pfade nacheinander abspielen')}</div>` +
+  `<div class="eq col" id="k1eq"></div>` + UI.st('k1st') + UI.leg([['--va','rot (R)'],['--vb','blau (B)']]),
+ init(){ const S = this; S.r = 3; S.b = 2; S.mode = 0; S.ev = 0; S.wrong = false; S.lit = null;
+  onSl('k1r', v => { S.r = v; S.lit = null; S.upd(); }); onSl('k1b', v => { S.b = v; S.lit = null; S.upd(); });
+  onSeg('k1mode', v => { S.mode = v; S.lit = null; S.upd(); }); onSeg('k1ev', v => { S.ev = v; S.lit = null; S.upd(); });
+  $('k1wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.lit = null; S.upd(); });
+  $('k1play').addEventListener('click', () => S.play());
+ },
+ show(){ this.lit = null; this.upd(); },
+ paths(wrong){
+  const S = this, N = S.r + S.b, same = S.mode === 1 || wrong;
+  const p1 = {R:[S.r,N], B:[S.b,N]};
+  const p2 = a => same ? p1 : (a === 'R' ? {R:[S.r-1,N-1], B:[S.b,N-1]} : {R:[S.r,N-1], B:[S.b-1,N-1]});
+  const out = [];
+  for (const a of 'RB') for (const c of 'RB') { const f1 = p1[a], f2 = p2(a)[c]; out.push({key:a+c, f1, f2, num:f1[0]*f2[0], den:f1[1]*f2[1]}); }
+  return out;
+ },
+ upd(){
+  const S = this, N = S.r + S.b; setSl('k1r', S.r, 0); setSl('k1b', S.b, 0);
+  $('k1wrongW').hidden = S.mode === 1;
+  const P = S.paths(S.wrong && S.mode === 0), sel = EV1[S.ev], den = P[0].den;
+  const onKeys = S.lit == null ? sel : sel.slice(0, S.lit);
+  S.draw(P, onKeys);
+  const selP = sel.map(k => P.find(x => x.key === k)), tot = sum(selP.map(q => q.num));
+  const L = [];
+  selP.forEach(q => L.push(`<span class="m">1. Pfadregel:</span> P(${q.key}) = ${q.f1[0]}/${q.f1[1]} · ${q.f2[0]}/${q.f2[1]} = ${q.num}/${q.den}${frac(q.num,q.den) !== q.num+'/'+q.den ? ' = ' + frac(q.num,q.den) : ''}`));
+  if (selP.length > 1) L.push(`<span class="m">2. Pfadregel:</span> P(${EVN[S.ev]}) = ${selP.map(q => frac(q.num,q.den)).join(' + ')} = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
+  else L.push(`P(${EVN[S.ev]}) = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
+  if (S.ev === 2) { const bb = P[3]; L.push(`<span class="m">Schneller über das Gegenereignis:</span> 1 − P(BB) = 1 − ${frac(bb.num,den)} = ${frac(den-bb.num,den)}`); }
+  lines('k1eq', L);
+  if (S.wrong && S.mode === 0) {
+    const C = S.paths(false), ct = sum(sel.map(k => C.find(x => x.key === k).num));
+    stat('k1st', `<b>Fehlerweg.</b> Ohne Zurücklegen liegt im 2. Zug eine Kugel weniger in der Urne: Der Nenner wird ${N-1}, und auch der Zähler der gezogenen Farbe sinkt um 1. Richtig wäre P = ${frac(ct,C[0].den)} ≈ ${fmt(ct/C[0].den,3)}, hier steht ${frac(tot,den)} ≈ ${fmt(tot/den,3)}.`, 'bad');
+  } else stat('k1st', S.mode === 0
+    ? `<b>Ohne Zurücklegen:</b> Die Brüche im 2. Zug hängen vom 1. Zug ab (Nenner ${N-1}). Entlang eines Pfades wird multipliziert, mehrere passende Pfade werden addiert.`
+    : `<b>Mit Zurücklegen:</b> Jeder Zug sieht dieselbe Urne, die Brüche bleiben in beiden Stufen gleich (Nenner ${N}).`, 'ok');
+ },
+ draw(P, onKeys){
+  clear(); const S = this;
+  const root = [450,52], L1 = {R:[250,212], B:[650,212]}, L2 = {RR:[140,382], RB:[360,382], BR:[540,382], BB:[760,382]};
+  const byKey = Object.fromEntries(P.map(q => [q.key, q]));
+  const on1 = {R: onKeys.some(k => k[0] === 'R'), B: onKeys.some(k => k[0] === 'B')};
+  const edge = (a,b,on) => svg.append(el('line', {x1:a[0], y1:a[1], x2:b[0], y2:b[1], class:'edge' + (on ? ' on' : ' dim')}));
+  const fl = (a,b,f,side) => svg.append(T((a[0]+b[0])/2 + side*34, (a[1]+b[1])/2, f[0] + '/' + f[1], 't mono b'));
+  for (const c of 'RB') { edge(root, L1[c], on1[c]); fl(root, L1[c], byKey[c+'R'].f1, c === 'R' ? -1 : 1); }
+  for (const k in L2) { edge(L1[k[0]], L2[k], onKeys.includes(k)); fl(L1[k[0]], L2[k], byKey[k].f2, k[1] === 'R' ? -1 : 1); }
+  const node = (pos,cls,label,r=20) => { svg.append(el('circle', {cx:pos[0], cy:pos[1], r, class:'nd ' + cls})); if (label) svg.append(T(pos[0], pos[1]+1, label, 't nl')); };
+  node(root, 'root', '', 9); svg.append(T(450, 26, 'Start', 't m'));
+  for (const c of 'RB') node(L1[c], c, c);
+  for (const k in L2) {
+    const q = byKey[k], on = onKeys.includes(k); node(L2[k], k[1], k[1]);
+    const y0 = L2[k][1] + 38, cls = on ? 't mono b' : 't mono m';
+    svg.append(T(L2[k][0], y0, k, cls));
+    svg.append(T(L2[k][0], y0+22, `${q.f1[0]}/${q.f1[1]} · ${q.f2[0]}/${q.f2[1]}`, cls, 'middle', 13));
+    svg.append(T(L2[k][0], y0+44, `= ${frac(q.num,q.den)} ≈ ${fmt(q.num/q.den,3)}`, cls, 'middle', 13));
+  }
+  svg.append(T(36, 132, '1. Zug', 't m', 'start')); svg.append(T(36, 297, '2. Zug', 't m', 'start'));
+  svg.append(T(450, 530, `Urne: ${S.r} rote, ${S.b} blaue Kugeln · ${S.mode === 0 ? 'ohne' : 'mit'} Zurücklegen${S.wrong && S.mode === 0 ? ' · FEHLERWEG' : ''}`, 't m'));
+ },
+ play(){ const S = this; stopAll(); const sel = EV1[S.ev]; S.lit = 0; S.upd();
+  for (let i = 1; i <= sel.length; i++) later(900*i, () => { S.lit = i; S.upd(); }); }
+});
+
+// =====================================================================
+// Karte 2: Zufallsgröße, Erwartungswert, Standardabweichung
+// =====================================================================
+const GAMES = [
+ {name:'Würfel (Klausur A)', e:3, out:[{l:'1, 2 oder 3', n:3, d:6, pay:0}, {l:'4 oder 5', n:2, d:6, pay:4}, {l:'6', n:1, d:6, pay:8}]},
+ {name:'Lose (Klausur B)', e:4, out:[{l:'Niete (4 Lose)', n:4, d:8, pay:0}, {l:'3 Lose', n:3, d:8, pay:4}, {l:'1 Los', n:1, d:8, pay:12}]},
+ {name:'Zwei Münzen', e:2, out:[{l:'0× Kopf', n:1, d:4, pay:0}, {l:'1× Kopf', n:2, d:4, pay:2}, {l:'2× Kopf', n:1, d:4, pay:5}]}
+];
+scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen', hint:'Rote Linie: E(X) · orange Klammer: μ ± σ',
+ html: UI.q('Lohnt sich das Spiel auf lange Sicht – und wie stark schwankt der Gewinn um den Erwartungswert?') +
+  UI.seg('k2g', GAMES.map(g => g.name)) + UI.sl('k2e','Einsatz pro Spiel in €',0,10,0.5,3) +
+  `<div class="tscroll"><table class="dist" id="k2tab"></table></div>` +
+  `<div class="row">${UI.btn('k2next','Weiter')}${UI.btn('k2fair','Fairen Einsatz finden',true)}</div>` +
+  `<div class="eq col" id="k2eq"></div>` + UI.st('k2st'),
+ init(){ const S = this; S.g = 0; S.e = 3; S.step = 1; S.fair = false;
+  onSeg('k2g', v => { S.g = v; S.e = GAMES[v].e; S.step = 1; S.fair = false; S.upd(); });
+  onSl('k2e', v => { S.e = v; S.fair = false; S.upd(); });
+  $('k2next').addEventListener('click', () => { S.step = S.step >= 3 ? 1 : S.step + 1; S.fair = false; S.upd(); });
+  $('k2fair').addEventListener('click', () => { const G = GAMES[S.g]; S.e = sum(G.out.map(o => o.pay * o.n / o.d)); S.step = Math.max(S.step, 2); S.fair = true; S.upd(); });
+ },
+ show(){ this.upd(); },
+ dist(){ return GAMES[this.g].out.map(o => ({k: o.pay - this.e, p: o.n/o.d, f:[o.n,o.d], l:o.l, pay:o.pay})); },
+ upd(){
+  const S = this, D = S.dist(); setSl('k2e', S.e, 2);
+  const mu = sum(D.map(d => d.k*d.p)), va = sum(D.map(d => (d.k-mu)**2 * d.p)), sd = Math.sqrt(va);
+  S.draw(D, mu, sd);
+  const head = ['Ergebnis','Auszahl.','k','P(X = k)']; if (S.step >= 2) head.push('k · P'); if (S.step >= 3) head.push('(k − μ)² · P');
+  const rows = D.map(d => { const c = [d.l, eur(d.pay), eur(d.k), `${d.f[0]}/${d.f[1]}`]; if (S.step >= 2) c.push(fmt(d.k*d.p,3)); if (S.step >= 3) c.push(fmt((d.k-mu)**2*d.p,3)); return c; });
+  const foot = ['Summe','','','1']; if (S.step >= 2) foot.push('E(X) = ' + fmt(mu,3)); if (S.step >= 3) foot.push('Var = ' + fmt(va,3));
+  $('k2tab').innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') + `<tr class="foot">${foot.map(c => `<td>${c}</td>`).join('')}</tr>`;
+  const L = [`<span class="m">Nettogewinn:</span> k = Auszahlung − Einsatz (${eur(S.e)})`];
+  if (S.step >= 2) L.push(`E(X) = ${D.map(d => `${fmt(d.k)}·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(mu,3)} €</b>`);
+  if (S.step >= 3) L.push(`Var(X) = ${D.map(d => `(${fmt(d.k)} − ${fmt(mu,2)})²·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(va,3)}</b>`, `σ = √Var(X) = √${fmt(va,3)} = <b>${fmt(sd,3)} €</b>`);
+  lines('k2eq', L);
+  $('k2next').textContent = S.step === 1 ? 'Weiter: E(X) berechnen' : S.step === 2 ? 'Weiter: Var(X) und σ' : 'Von vorn';
+  if (S.fair) stat('k2st', `<b>Fairer Einsatz:</b> Einsatz = E(Auszahlung) = ${D.map(d => `${d.pay}·${d.f[0]}/${d.f[1]}`).join(' + ')} = ${eur(S.e)}. Dann ist E(X) = 0: Auf lange Sicht gewinnt und verliert niemand.`, 'ok');
+  else if (S.step === 1) stat('k2st', 'Schritt 1: Alle möglichen Nettogewinne k mit ihren Wahrscheinlichkeiten in eine Tabelle schreiben. Kontrolle: Die Wahrscheinlichkeiten addieren sich zu 1.');
+  else stat('k2st', Math.abs(mu) < 1e-9 ? `<b>E(X) = 0:</b> Das Spiel ist fair.`
+    : mu < 0 ? `<b>E(X) = ${fmt(mu,2)} €:</b> Pro Spiel verliert die Spielerin auf lange Sicht im Mittel ${eur(-mu)}. Das Spiel ist nicht fair, der Anbieter ist im Vorteil.`
+    : `<b>E(X) = ${fmt(mu,2)} €:</b> Pro Spiel gewinnt die Spielerin auf lange Sicht im Mittel ${eur(mu)}. Das Spiel ist nicht fair, die Spielerin ist im Vorteil.`, Math.abs(mu) < 1e-9 ? 'ok' : mu < 0 ? 'bad' : 'ok');
+ },
+ draw(D, mu, sd){
+  clear(); const S = this, ks = D.map(d => d.k);
+  const lo = Math.min(...ks, mu - sd) - 1.5, hi = Math.max(...ks, mu + sd) + 1.5;
+  const L = PL.L, R = PL.R, Tp = PL.T + 40, B = PL.B;
+  const x = v => L + (v-lo)/(hi-lo) * (R-L), pmax = Math.max(...D.map(d => d.p)) * 1.3, y = v => B - (v/pmax) * (B-Tp);
+  const bw = Math.min(70, (R-L)/(hi-lo) * 0.8);
+  const tk = niceTicks(pmax); for (const v of tk.ticks) { svg.append(el('line', {x1:L, x2:R, y1:y(v), y2:y(v), class:'grid'})); svg.append(T(L-8, y(v), fmt(v,tk.dec), 't m mono', 'end', 12)); }
+  svg.append(el('line', {x1:L, x2:R, y1:B, y2:B, class:'ax'}));
+  const lstep = hi - lo > 16 ? 2 : 1;
+  for (let v = Math.ceil(lo); v <= Math.floor(hi); v++) { svg.append(el('line', {x1:x(v), x2:x(v), y1:B, y2:B+5, class:'ax'})); if (v % lstep === 0) svg.append(T(x(v), B+16, fmt(v,0), 't m mono', 'middle', 12)); }
+  svg.append(T(R+10, B+16, 'k in €', 't m', 'start', 12)); svg.append(T(L-8, PL.T-18, 'P(X = k)', 't m', 'end', 12));
+  D.forEach(d => { svg.append(el('rect', {x:x(d.k)-bw/2, y:y(d.p), width:bw, height:B-y(d.p), rx:3, class:'bar'})); svg.append(T(x(d.k), y(d.p)-14, `${d.f[0]}/${d.f[1]}`, 't mono b')); svg.append(T(x(d.k), y(d.p)-32, `k = ${eur(d.k)}`, 't m', 'middle', 12)); });
+  if (S.step >= 2) { svg.append(el('line', {x1:x(mu), x2:x(mu), y1:Tp-14, y2:B, class:'mu'})); svg.append(T(x(mu), Tp-26, `E(X) = ${fmt(mu,2)} €`, 't b ch')); }
+  if (S.step >= 3) { const yb = Tp+4; svg.append(el('line', {x1:x(mu-sd), x2:x(mu+sd), y1:yb, y2:yb, class:'bnd'})); [mu-sd, mu+sd].forEach(v => svg.append(el('line', {x1:x(v), x2:x(v), y1:yb-6, y2:yb+6, class:'bnd'}))); svg.append(T(x(mu+sd)+8, yb, `σ = ${fmt(sd,2)} €`, 't mono ca', 'start', 12)); }
+  svg.append(T(450, 536, `${GAMES[S.g].name} · Einsatz ${eur(S.e)}`, 't m'));
+ }
+});
+
+// =====================================================================
+// Karte 3: Bernoulli-Formel von Hand
+// =====================================================================
+scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint:'Jede Zeile ist ein Pfad; eine Spalte sammelt alle Pfade mit gleicher Trefferzahl',
+ html: UI.q('Wie viele Pfade haben genau k Treffer, und was ist jeder einzelne Pfad wert?') +
+  UI.sl('k3n','n = Anzahl der Versuche',1,6,1,3) + UI.sl('k3p','p = Trefferwahrscheinlichkeit',0.05,0.95,0.05,0.5) + UI.sl('k3k','k = Anzahl der Treffer',0,3,1,2) +
+  UI.chk('k3wrong','Fehlerweg: Binomialkoeffizient vergessen (nur einen Pfad zählen)') +
+  `<div class="row">${UI.btn('k3play','P(X ≤ k) Spalte für Spalte aufsummieren')}</div>` +
+  `<div class="eq col" id="k3eq"></div>` + UI.st('k3st') + UI.leg([['--va','Treffer'],['--line','Niete']]),
+ init(){ const S = this; S.n = 3; S.p = 0.5; S.k = 2; S.wrong = false; S.lit = null;
+  onSl('k3n', v => { S.n = v; $('k3k').max = v; if (S.k > v) S.k = v; S.lit = null; S.upd(); });
+  onSl('k3p', v => { S.p = v; S.lit = null; S.upd(); }); onSl('k3k', v => { S.k = v; S.lit = null; S.upd(); });
+  $('k3wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.upd(); });
+  $('k3play').addEventListener('click', () => S.play());
+ },
+ show(){ this.lit = null; this.upd(); },
+ upd(){
+  const S = this, {n,p,k} = S, q = 1-p; setSl('k3n', n, 0); setSl('k3p', p, 2); setSl('k3k', k, 0);
+  const arr = binom(n,p), c = cdf(arr), C = choose(n,k), one = Math.pow(p,k) * Math.pow(q,n-k);
+  S.draw(arr, c);
+  lines('k3eq', [
+   `<span class="m">Binomialkoeffizient:</span> (${n} über ${k}) = ${n}! / (${k}! · ${n-k}!) = ${fact(n)} / (${fact(k)} · ${fact(n-k)}) = <b>${C}</b>`,
+   `<span class="m">Ein Pfad mit ${k} Treffern:</span> ${fmt(p,2)}${sup(k)} · ${fmt(q,2)}${sup(n-k)} = ${fix(one,4)}`,
+   `<span class="m">Bernoulli-Formel:</span> P(X = ${k}) = ${C} · ${fix(one,4)} = <b>${fix(arr[k],4)}</b>`,
+   `<span class="m">Summe:</span> P(X ≤ ${k}) = ${range(0,k).map(i => `P(X = ${i})`).join(' + ')} = ${range(0,k).map(i => fix(arr[i],4)).join(' + ')} = <b>${fix(cF(c,k),4)}</b>`,
+   `<span class="m">F-Schreibweise:</span> P(X = ${k}) = ${Bs(n,p)}(${k}) ; P(X ≤ ${k}) = ${Fs(n,p)}(${k}) = ${fix(cF(c,k),4)}`
+  ]);
+  if (S.wrong) stat('k3st', `<b>Fehlerweg.</b> Ohne den Binomialkoeffizienten zählst du nur <em>einen</em> der ${C} Pfade mit ${k} Treffern: ${fix(one,4)} statt ${C} · ${fix(one,4)} = ${fix(arr[k],4)}. Jeder Pfad in der Spalte ist gleich wahrscheinlich, deshalb wird mit der Anzahl der Pfade multipliziert.`, 'bad');
+  else stat('k3st', `Es gibt <b>${C}</b> Pfade mit genau ${k} Treffern (Spalte k = ${k}). Jeder hat die Wahrscheinlichkeit p${sup(k)} · (1 − p)${sup(n-k)}. Anzahl mal Pfadwert ergibt P(X = ${k}).`, 'ok');
+ },
+ draw(arr, c){
+  clear(); const S = this, {n,k} = S, w = (PL.R - PL.L) / (n+1), x = j => PL.L + (j+0.5) * w;
+  const groups = range(0,n).map(() => []);
+  for (let m = 0; m < (1 << n); m++) { const bits = []; let h = 0; for (let i = n-1; i >= 0; i--) { const b = (m >> i) & 1; bits.push(b); h += b; } groups[h].push(bits); }
+  const maxC = Math.max(...groups.map(g => g.length)), rowH = Math.min(18, (430-96) / maxC), s = Math.min(13, (w-14) / n);
+  const litSet = S.lit == null ? [k] : range(0, S.lit);
+  for (let j = 0; j <= n; j++) {
+    const on = litSet.includes(j);
+    if (on) svg.append(el('rect', {x:x(j)-w/2+3, y:36, width:w-6, height:470, rx:8, class:'colbg'}));
+    svg.append(T(x(j), 56, `k = ${j}`, 't b')); svg.append(T(x(j), 76, `${groups[j].length} Pfad${groups[j].length === 1 ? '' : 'e'}`, 't m', 'middle', 12));
+    groups[j].forEach((bits, r) => { const y0 = 96 + r*rowH, x0 = x(j) - bits.length*s/2; bits.forEach((b,i) => svg.append(el('rect', {x:x0+i*s+1, y:y0, width:s-2, height:Math.max(3, Math.min(s-2, rowH-3)), rx:2, class:'chip' + (b ? ' T' : '')}))); });
+    svg.append(T(x(j), 458, `${choose(n,j)}·${fmt(S.p,2)}${sup(j)}·${fmt(1-S.p,2)}${sup(n-j)}`, 't mono m', 'middle', 11));
+    svg.append(T(x(j), 482, `P(X = ${j}) = ${fix(arr[j],4)}`, 't mono' + (on ? ' b' : ' m'), 'middle', 12));
+  }
+  svg.append(T(450, 528, S.lit != null ? `P(X ≤ ${S.lit}) = ${range(0,S.lit).map(i => fix(arr[i],4)).join(' + ')} = ${fix(cF(c,S.lit),4)}` : `n = ${n} Versuche, p = ${fmt(S.p,2)} · insgesamt ${1 << n} Pfade`, 't' + (S.lit != null ? ' b' : ' m')));
+ },
+ play(){ const S = this; stopAll(); S.lit = 0; S.upd(); for (let i = 1; i <= S.k; i++) later(900*i, () => { S.lit = i; S.upd(); }); }
+});
+
+// =====================================================================
+// Karte 4: Diagramm und Tabelle ablesen
+// =====================================================================
+scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilung', hint:'Säule antippen wählt k',
+ html: UI.q('Wie lese ich P(X &lt; k), P(X = k) und P(X &gt; k) aus einem Säulendiagramm oder einer Tabelle ab?') +
+  UI.seg('k4v', ['Einzelwahrscheinlichkeiten P(X = k)','Kumuliert P(X ≤ k)']) +
+  UI.sl('k4n','n',1,30,1,8) + UI.sl('k4p','p',0.05,0.95,0.05,0.6) + UI.sl('k4k','k',0,8,1,4) +
+  `<div class="eq col" id="k4eq"></div>` +
+  `<div id="k4tw"><div class="lbl">Tabelle (Einzel- und kumulierte Wahrscheinlichkeiten)</div><div class="tscroll"><table class="dist" id="k4tab"></table></div></div>` +
+  UI.st('k4st') + UI.leg([['--vb','X &lt; k'],['--va','X = k'],['--vr','X &gt; k']]),
+ init(){ const S = this; S.v = 0; S.n = 8; S.p = 0.6; S.k = 4;
+  onSeg('k4v', v => { S.v = v; S.upd(); });
+  onSl('k4n', v => { S.n = v; $('k4k').max = v; if (S.k > v) S.k = v; S.upd(); }); onSl('k4p', v => { S.p = v; S.upd(); }); onSl('k4k', v => { S.k = v; S.upd(); });
+ },
+ show(){ this.upd(); },
+ pick(k){ stopAll(); this.k = k; this.upd(); },
+ upd(){
+  const S = this, {n,p,k} = S; setSl('k4n', n, 0); setSl('k4p', p, 2); setSl('k4k', k, 0);
+  const arr = binom(n,p), c = cdf(arr), lt = cF(c,k-1), eq = arr[k], gt = 1 - cF(c,k);
+  clear();
+  if (S.v === 0) hist({n, arr, pick:true, cls: j => j < k ? 'lt' : j === k ? 'on' : 'gt'});
+  else {
+    const H = hist({n, arr:c, ymax:1, ylabel:'P(X ≤ k)', pick:true, cls: j => j === k ? 'on' : j === k-1 ? 'lt' : ''});
+    [[cF(c,k), `F(${k}) = ${fix(cF(c,k),4)}`], [cF(c,k-1), `F(${fmt(k-1,0)}) = ${fix(cF(c,k-1),4)}`]].forEach(([v,l]) => {
+      svg.append(el('line', {x1:PL.L, x2:H.x(k)+H.w, y1:H.y(v), y2:H.y(v), class:'bnd'})); svg.append(T(H.x(k)+H.w+6, H.y(v), l, 't mono ca', 'start', 12)); });
+  }
+  svg.append(T(450, 532, `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}`, 't m'));
+  const F = Fs(n,p);
+  lines('k4eq', [
+   `<span class="cb">P(X &lt; ${k})</span> = P(X ≤ ${fmt(k-1,0)}) = ${F}(${fmt(k-1,0)}) = <b>${fix(lt,4)}</b>`,
+   `<span class="ca">P(X = ${k})</span> = ${F}(${k}) − ${F}(${fmt(k-1,0)}) = <b>${fix(eq,4)}</b>`,
+   `<span class="cr">P(X &gt; ${k})</span> = 1 − ${F}(${k}) = <b>${fix(gt,4)}</b>`,
+   `<span class="m">Kontrolle: ${fix(lt,4)} + ${fix(eq,4)} + ${fix(gt,4)} = ${fix(lt+eq+gt,4)}</span>`
+  ]);
+  if (n <= 15) { $('k4tw').hidden = false;
+    $('k4tab').innerHTML = `<tr><th>k</th><th>P(X = k)</th><th>P(X ≤ k)</th></tr>` +
+      range(0,n).map(j => `<tr class="${j===k?'h1':''}"><td>${j}</td><td>${fix(arr[j],4)}</td><td>${fix(c[j],4)}</td></tr>`).join('');
+  } else $('k4tw').hidden = true;
+  stat('k4st', S.v === 0
+    ? `Im Diagramm der Einzelwahrscheinlichkeiten: P(X &lt; ${k}) ist die Summe der blauen Säulen links, P(X = ${k}) die orange Säule, P(X &gt; ${k}) die Summe der grünen Säulen rechts.`
+    : `Im kumulierten Diagramm zeigt jede Säule P(X ≤ k). P(X = ${k}) ist der Höhenunterschied zwischen Säule ${k} und Säule ${fmt(k-1,0)}; P(X &gt; ${k}) ist der Rest von Säule ${k} bis 1.`);
+ }
+});
+
+// =====================================================================
+// Karte 5: Übersetzer „mindestens / höchstens / mehr als …“
+// =====================================================================
+const MODES = ['genau k','mindestens k','höchstens k','mehr als k','weniger als k','mindestens k, aber weniger als k₂'];
+const evSet = (m,n,k,k2) => [[k,k],[k,n],[0,k],[k+1,n],[0,k-1],[k,k2-1]][m];
+const wrongSet = (m,n,k,k2) => [[k,k],[k+1,n],[0,k-1],[k,n],[0,k],[k+1,k2]][m];
+const evWords = (m,k,k2) => ['genau ' + k, 'mindestens ' + k, 'höchstens ' + k, 'mehr als ' + k, 'weniger als ' + k, `mindestens ${k}, aber weniger als ${k2}`][m];
+function evF(m,k,k2,F){ const km = fmt(k-1,0); return [`${F}(${k}) − ${F}(${km})`, `1 − ${F}(${km})`, `${F}(${k})`, `1 − ${F}(${k})`, `${F}(${km})`, `${F}(${k2-1}) − ${F}(${km})`][m]; }
+scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomialverteilung', hint:'Orange Säulen gehören zum Ereignis · Säule antippen wählt k',
+ html: UI.q('Welche Trefferzahlen meint die Formulierung – und welcher F-Ausdruck passt dazu?') +
+  UI.seg('k5pre', ['Klausur A: n = 18, p = 0,62','Klausur B: n = 25, p = 0,18','frei'], 0) +
+  UI.sl('k5n','n',1,100,1,18) + UI.sl('k5p','p',0.01,0.99,0.01,0.62) + UI.sl('k5k','k',0,18,1,7) + `<div id="k5k2w">${UI.sl('k5k2','k₂',1,18,1,11)}</div>` +
+  `<div><div class="lbl">Formulierung in der Aufgabe</div>${UI.seg('k5m', MODES)}</div>` +
+  UI.chk('k5wrong','Fehlerweg: Grenze falsch – „mindestens“ wie „mehr als“ behandeln (und umgekehrt)') +
+  `<div class="eq col" id="k5eq"></div>` + UI.st('k5st') +
+  `<p class="note"><b>Modellannahmen (Aufgabe 5a):</b> feste Anzahl n von Versuchen · jeder Versuch hat nur Treffer/Niete · gleiches p in jedem Versuch · Versuche unabhängig ⇒ X ist binomialverteilt.</p>`,
+ init(){ const S = this; S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; S.m = 0; S.wrong = false;
+  onSeg('k5pre', v => { if (v === 0) { S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; } if (v === 1) { S.n = 25; S.p = 0.18; S.k = 3; S.k2 = 6; } S.upd(); });
+  onSl('k5n', v => { S.n = v; S.k = Math.min(S.k, v); S.k2 = Math.min(S.k2, v); setSeg('k5pre', 2); S.upd(); });
+  onSl('k5p', v => { S.p = v; setSeg('k5pre', 2); S.upd(); });
+  onSl('k5k', v => { S.k = v; S.upd(); }); onSl('k5k2', v => { S.k2 = v; S.upd(); });
+  onSeg('k5m', v => { S.m = v; S.upd(); });
+  $('k5wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.upd(); });
+ },
+ show(){ this.upd(); },
+ pick(k){ stopAll(); this.k = k; this.upd(); },
+ upd(){
+  const S = this, {n,p,m} = S; $('k5k').max = n; $('k5k2').max = n; if (S.k2 <= S.k && m === 5) S.k2 = Math.min(n, S.k+1); $('k5k2').min = 1;
+  const k = S.k, k2 = S.k2; setSl('k5n', n, 0); setSl('k5p', p, 2); setSl('k5k', k, 0); setSl('k5k2', k2, 0); $('k5k2w').hidden = m !== 5;
+  const arr = binom(n,p), c = cdf(arr), [a,b] = evSet(m,n,k,k2), P = pRange(c,a,b);
+  const aa = Math.max(0,a), bb = Math.min(n,b);
+  clear();
+  hist({n, arr, pick:true, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
+  const plain = aa > bb ? '0' : aa <= 0 ? `F(${bb})` : bb >= n ? `1 − F(${aa-1})` : `F(${bb}) − F(${aa-1})`;
+  svg.append(T(450, PL.T-18, `P(${evWords(m,k,k2)} Treffer) = P(${aa} ≤ X ≤ ${bb}) = ${plain} = ${fix(P,4)}`, 't b'));
+  svg.append(T(450, 532, `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}`, 't m'));
+  const F = Fs(n,p), set = aa > bb ? '{ }' : bb - aa <= 6 ? '{' + range(aa,bb).join('; ') + '}' : `{${aa}; ${aa+1}; …; ${bb}}`;
+  lines('k5eq', [
+   `<span class="m">Ereignis:</span> „${evWords(m,k,k2)} Treffer“ ⇒ Trefferzahlen ${set}`,
+   `<span class="m">Als Intervall:</span> P(${aa} ≤ X ≤ ${bb})`,
+   `<span class="m">F-Ausdruck:</span> ${evF(m,k,k2,F)}`,
+   `<span class="m">Wert (CAS, 4 Dezimalen):</span> <b>${fix(P,4)}</b>`,
+   `<span class="m">CAS-Befehl:</span> binomCdf(${n}, ${fmt(p,2)}, ${aa}, ${bb})${m === 0 ? ` bzw. binomPdf(${n}, ${fmt(p,2)}, ${k})` : ''}`
+  ]);
+  if (S.wrong && m !== 0) {
+    const [wa,wb] = wrongSet(m,n,k,k2), wp = pRange(c,wa,wb);
+    stat('k5st', `<b>Fehlerweg.</b> Mit der falschen Grenze käme ${fix(wp,4)} heraus statt ${fix(P,4)}. Der Unterschied ist genau ${m === 5 ? `P(X = ${k}) − P(X = ${k2}) = ${fix(arr[k]-arr[k2],4)}` : `P(X = ${k}) = ${fix(arr[k],4)}`}: Die Säule bei k = ${k} gehört ${m === 1 || m === 2 ? 'dazu' : 'nicht dazu'}.`, 'bad');
+  } else stat('k5st', `<b>Merkregel:</b> „mindestens k“ und „höchstens k“ schließen k ein. „mehr als k“ und „weniger als k“ schließen k aus. Für den F-Ausdruck gilt immer: P(a ≤ X ≤ b) = F(b) − F(a − 1).`, 'ok');
+ }
+});
+
+// =====================================================================
+// Karte 6: Sigma-Umgebungen
+// =====================================================================
+scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialverteilung', hint:'Rote Linie: μ · gestrichelt: μ ± zσ · orange Säulen: nach innen gerundete Umgebung',
+ html: UI.q('Welche Trefferzahlen liegen in der 1σ-, 2σ- und 3σ-Umgebung – und stimmen 68,3 % / 95,4 % / 99,7 % wirklich?') +
+  UI.seg('k6pre', ['Klausur A: n = 100, p = 0,5','Klausur B: n = 120, p = 1/6','frei'], 0) +
+  UI.sl('k6n','n',10,200,1,100) + UI.sl('k6p','p',0.05,0.95,0.01,0.5) +
+  `<div><div class="lbl">Umgebung</div>${UI.seg('k6z', ['1σ (≈ 68,3 %)','2σ (≈ 95,4 %)','3σ (≈ 99,7 %)'])}</div>` +
+  `<div class="row">${UI.btn('k6all','Alle drei durchlaufen')}</div>` +
+  `<div class="eq col" id="k6eq"></div>` + `<div class="tscroll"><table class="dist" id="k6tab"></table></div>` + UI.st('k6st'),
+ init(){ const S = this; S.n = 100; S.p = 0.5; S.z = 1;
+  onSeg('k6pre', v => { if (v === 0) { S.n = 100; S.p = 0.5; } if (v === 1) { S.n = 120; S.p = 1/6; } S.upd(); });
+  onSl('k6n', v => { S.n = v; setSeg('k6pre', 2); S.upd(); }); onSl('k6p', v => { S.p = v; setSeg('k6pre', 2); S.upd(); });
+  onSeg('k6z', v => { S.z = v+1; S.upd(); });
+  $('k6all').addEventListener('click', () => { stopAll(); [1,2,3].forEach((z,i) => later(1300*i, () => { S.z = z; setSeg('k6z', z-1); S.upd(); })); });
+ },
+ show(){ this.upd(); },
+ rows(){ const S = this, {n,p} = S, arr = binom(n,p), c = cdf(arr), mu = n*p, sd = Math.sqrt(n*p*(1-p));
+  const R = [1,2,3].map(z => { const lo = mu - z*sd, hi = mu + z*sd, a = Math.max(0, Math.ceil(lo - 1e-9)), b = Math.min(n, Math.floor(hi + 1e-9)); return {z, lo, hi, a, b, P: pRange(c,a,b), rule:[0.683,0.954,0.997][z-1]}; });
+  return {arr, c, mu, sd, R};
+ },
+ upd(){
+  const S = this, {n,p,z} = S; setSl('k6n', n, 0); setSl('k6p', p, 2);
+  const {arr, mu, sd, R} = S.rows(), r = R[z-1];
+  clear();
+  const H = hist({n, arr, cls: j => (j >= r.a && j <= r.b) ? 'on' : 'dim'});
+  drawBand(H, mu, sd, z, r.a, r.b, `${z}σ-Umgebung: ${r.a} ≤ X ≤ ${r.b} · P = ${pct(r.P,1)} (Faustregel ${pct(r.rule,1)})`);
+  lines('k6eq', [
+   `μ = n · p = ${n} · ${fmt(p,3)} = <b>${fmt(mu,2)}</b>`,
+   `σ = √(n · p · (1 − p)) = √(${n} · ${fmt(p,3)} · ${fmt(1-p,3)}) = √${fmt(n*p*(1-p),3)} = <b>${fmt(sd,3)}</b>`,
+   `<span class="m">${z}σ-Umgebung:</span> [μ − ${z}σ ; μ + ${z}σ] = [${fmt(r.lo,2)} ; ${fmt(r.hi,2)}] → nach innen gerundet [${r.a} ; ${r.b}]`,
+   `P(${r.a} ≤ X ≤ ${r.b}) = ${Fs(n,p)}(${r.b}) − ${Fs(n,p)}(${fmt(r.a-1,0)}) = <b>${fix(r.P,4)}</b> ≈ ${pct(r.P,1)}`
+  ]);
+  $('k6tab').innerHTML = `<tr><th>z</th><th>μ ± zσ</th><th>gerundet</th><th>P tatsächlich</th><th>Regel</th></tr>` +
+    R.map(q => `<tr class="${q.z === z ? 'h1' : ''}"><td>${q.z}σ</td><td>${fmt(q.lo,2)} … ${fmt(q.hi,2)}</td><td>${q.a} … ${q.b}</td><td>${pct(q.P,1)}</td><td>${pct(q.rule,1)}</td></tr>`).join('');
+  stat('k6st', sd > 3
+    ? `<b>Laplace-Bedingung erfüllt (σ = ${fmt(sd,2)} &gt; 3):</b> Die Faustregeln 68,3 % / 95,4 % / 99,7 % passen gut. Abweichungen entstehen durch das Runden nach innen auf ganze Trefferzahlen.`
+    : `<b>Achtung, σ = ${fmt(sd,2)} ≤ 3:</b> Die Laplace-Bedingung ist nicht erfüllt, die Faustregeln können deutlich abweichen. Die tatsächlichen Wahrscheinlichkeiten mit dem CAS berechnen.`, sd > 3 ? 'ok' : 'bad');
+ }
+});
+
+// =====================================================================
+// Karte 7: Erwartete Schwankungen im Alltag
+// =====================================================================
+const CTX = [
+ {name:'Gärtnerei (Klausur A)', n:100, p:0.4, X:'Anzahl der gekeimten Samen', s:(a,b,pc) => `In etwa ${pc} der Aussaaten keimen zwischen ${a} und ${b} der 100 Samen.`},
+ {name:'Basketball (Klausur B)', n:80, p:0.8, X:'Anzahl der Treffer bei 80 Freiwürfen', s:(a,b,pc) => `In etwa ${pc} der Trainingseinheiten trifft der Spieler zwischen ${a} und ${b} der 80 Freiwürfe.`},
+ {name:'Eigener Kontext', n:50, p:0.3, X:'Anzahl der Treffer', s:(a,b,pc) => `In etwa ${pc} der Durchgänge liegt die Trefferzahl zwischen ${a} und ${b}.`}
+];
+scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialverteilung', hint:'Orange Säulen: der gesuchte Bereich · außerhalb: die seltenen Fälle',
+ html: UI.q('In welchem Bereich liegt die Trefferzahl „fast immer“ – und wie formuliere ich das im Sachzusammenhang?') +
+  UI.seg('k7c', CTX.map(c => c.name)) + `<div id="k7own">${UI.sl('k7n','n',10,200,1,50)}${UI.sl('k7p','p',0.05,0.95,0.01,0.3)}</div>` +
+  `<div><div class="lbl">Gewünschte Sicherheit</div>${UI.seg('k7z', ['≈ 68,3 % (1σ)','≈ 95,4 % (2σ)','≈ 99,7 % (3σ)'], 1)}</div>` +
+  `<div class="row">${UI.btn('k7play','Rezept Schritt für Schritt')}</div>` +
+  `<ol class="steps" id="k7steps"></ol>` + UI.st('k7st'),
+ init(){ const S = this; S.c = 0; S.n = 50; S.p = 0.3; S.z = 2; S.step = 6;
+  onSeg('k7c', v => { S.c = v; S.step = 6; S.upd(); }); onSl('k7n', v => { S.n = v; S.upd(); }); onSl('k7p', v => { S.p = v; S.upd(); });
+  onSeg('k7z', v => { S.z = v+1; S.step = 6; S.upd(); });
+  $('k7play').addEventListener('click', () => { stopAll(); S.step = 0; S.upd(); for (let i = 1; i <= 6; i++) later(1000*i, () => { S.step = i; S.upd(); }); });
+ },
+ show(){ this.step = 6; this.upd(); },
+ upd(){
+  const S = this, C = CTX[S.c], n = S.c === 2 ? S.n : C.n, p = S.c === 2 ? S.p : C.p, z = S.z; $('k7own').hidden = S.c !== 2; setSl('k7n', S.n, 0); setSl('k7p', S.p, 2);
+  const arr = binom(n,p), c = cdf(arr), mu = n*p, sd = Math.sqrt(n*p*(1-p)), lo = mu - z*sd, hi = mu + z*sd;
+  const a = Math.max(0, Math.ceil(lo - 1e-9)), b = Math.min(n, Math.floor(hi + 1e-9)), P = pRange(c,a,b), rule = ['68,3 %','95,4 %','99,7 %'][z-1];
+  clear();
+  const H = hist({n, arr, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
+  drawBand(H, mu, sd, z, a, b, S.step >= 4 ? `Bereich ${a} ≤ X ≤ ${b} · innerhalb ${pct(P,2)} · außerhalb ${pct(1-P,2)}` : '');
+  const F = Fs(n,p);
+  $('k7steps').innerHTML = [
+   `Zufallsgröße: X = ${C.X}. X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)} (fest n, nur Treffer/Niete, gleiches p, unabhängig).`,
+   `<span class="m">μ = n · p = ${fmt(mu,2)} ; σ = √(n · p · (1 − p)) = √${fmt(n*p*(1-p),3)} ≈ ${fmt(sd,3)}</span> ${sd > 3 ? '· σ &gt; 3 ✓ Sigma-Regel anwendbar' : '· σ ≤ 3, Sigma-Regel nur grob'}`,
+   `${rule}-Bereich mit ungerundeten Werten: <span class="m">μ − ${z}σ = ${fmt(lo,2)} bis μ + ${z}σ = ${fmt(hi,2)}</span>`,
+   `Nach innen auf ganze Zahlen runden: <span class="m">${a} ≤ X ≤ ${b}</span>`,
+   `Im Sachzusammenhang: „${C.s(a,b,rule)}“`,
+   `Mit dem CAS: <span class="m">P(${a} ≤ X ≤ ${b}) = ${F}(${b}) − ${F}(${fmt(a-1,0)}) = ${fix(P,4)} ≈ ${pct(P,2)}</span> ; außerhalb: <span class="m">1 − ${fix(P,4)} = ${fix(1-P,4)} ≈ ${pct(1-P,2)}</span>`
+  ].map(t => `<li>${t}</li>`).join('');
+  setSteps('k7steps', S.step);
+  stat('k7st', S.step < 6 ? `Schritt ${S.step} von 6 …` : `<b>Ergebnis:</b> ${C.s(a,b,rule)} Genauer mit dem CAS: ${pct(P,2)} innerhalb, ${pct(1-P,2)} außerhalb. Wichtig: Grenzen mit ungerundetem σ berechnen, erst am Ende nach innen runden.`, S.step < 6 ? '' : 'ok');
+ }
+});
+
+// =====================================================================
+// Karte 8: Welche Karte?
+// =====================================================================
+const KW = [['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufallsgröße, Nettogewinn, Erwartungswert, fairer Einsatz, Varianz, σ','k2'],['Bernoulli-Kette, Binomialkoeffizient, „von Hand“, Bernoulli-Formel','k3'],['Diagramm ablesen, Tabelle, kumuliert, F-Schreibweise, B<sub>n;p</sub>(k)','k4'],['genau / mindestens / höchstens / mehr als / weniger als, Modellannahmen','k5'],['Sigma-Umgebung, μ und σ, 68,3 % / 95,4 % / 99,7 % vergleichen','k6'],['Bereich im Sachzusammenhang, „in 95,4 % der Fälle“, erwartete Schwankung','k7']];
+scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
+ html: UI.q('Welches Stichwort steht in der Aufgabe?') +
+  `<table class="kw">${KW.map(([t,id]) => `<tr><td>${t}</td><td><button data-go="${id}">Karte ${id.slice(1)}</button></td></tr>`).join('')}</table>` +
+  `<p class="note">Vorgehen in der Klausur: Stichwort markieren, Karte im Kopf aufrufen, Rezept Schritt für Schritt, Kontrolle (Summe = 1, Grenzen eingeschlossen?, Einheit im Antwortsatz).</p>`,
+ init(){ this.el.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); }); },
+ show(){ clear();
+  const items = [['Teil A · ohne Hilfsmittel','Karten 1–3: Brüche, Tabelle, Bernoulli-Formel'],['Teil B · mit CAS','Karten 4–7: Verteilung, F-Ausdrücke, Sigma-Umgebungen']];
+  items.forEach(([h,t],i) => { const y = 170 + i*140; svg.append(el('rect', {x:120, y:y-50, width:660, height:100, rx:14, class:'colbg'})); svg.append(T(450, y-14, h, 't b', 'middle', 20)); svg.append(T(450, y+18, t, 't m', 'middle', 15)); });
+  svg.append(T(450, 440, 'Rezept: Stichwort → Karte → Schritte → Kontrolle', 't', 'middle', 16));
+ }
+});
+
+// ---------- Navigation ----------
+const nav = $('nav'), panels = $('panels'), hint = $('hint'); let current = null;
+const groups = {};
+order.forEach(id => { const S = scenes[id];
+  if (!groups[S.grp]) { const d = document.createElement('div'); d.className = 'grp'; d.innerHTML = `<div class="gl">${S.grp}</div>`; nav.appendChild(d); groups[S.grp] = d; }
+  const b = document.createElement('button'); b.dataset.id = id; b.innerHTML = `<b>${S.card}</b>${S.title}`; groups[S.grp].appendChild(b);
+  const sec = document.createElement('section'); sec.className = 'panel'; sec.hidden = true; sec.innerHTML = `<div class="ph"><span class="kn">Karte ${S.card}</span><h2>${S.title}</h2></div>` + S.html; panels.appendChild(sec); S.el = sec;
+});
+order.forEach(id => scenes[id].init());
+nav.addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(b.dataset.id); });
+svg.addEventListener('click', e => { const r = e.target.closest('rect.pick'); if (r && current && current.pick) current.pick(+r.dataset.k); });
+function go(id){
+  if (!scenes[id]) id = 'k1'; stopAll(); current = scenes[id];
+  order.forEach(k => { scenes[k].el.hidden = k !== id; });
+  nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-current', b.dataset.id === id));
+  const nb = nav.querySelector(`button[data-id="${id}"]`); if (nb && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = nb.offsetLeft - nav.clientWidth/2 + nb.offsetWidth/2;
+  hint.textContent = current.hint || ''; svg.setAttribute('aria-label', 'Szene: ' + current.title);
+  current.show();
+  try { history.replaceState(null, '', '#' + id); } catch (e) {}
+}
+window.addEventListener('hashchange', () => { const id = location.hash.slice(1); if (scenes[id] && current !== scenes[id]) go(id); });
+go((location.hash || '').slice(1) || 'k1');
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>

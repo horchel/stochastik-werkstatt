@@ -1,0 +1,62 @@
+STOCHASTIK-WERKSTATT – ALS APP INSTALLIEREN
+===========================================
+
+Inhalt dieses Ordners
+  index.html              die komplette App (läuft ohne Internet)
+  manifest.webmanifest    App-Name, Icon, Vollbild-Modus
+  sw.js                   speichert die App für den Offline-Betrieb
+  icons/                  App-Symbole
+
+Die Karten (Stochastik Q2, passend zu den Probeklausuren A und B)
+  Grundlagen (Teil A, ohne Hilfsmittel)
+    1  Baumdiagramm & Pfadregeln          Urne, mit/ohne Zurücklegen, Fehlerweg
+    2  Zufallsgröße & Erwartungswert       Gewinnverteilung, E(X), Var(X), σ, fairer Einsatz
+    3  Bernoulli-Formel von Hand           Binomialkoeffizient als Pfadanzahl, P(X = k), P(X ≤ k)
+  Binomialverteilung (Teil B, mit CAS)
+    4  Diagramm & Tabelle ablesen          P(X < k), P(X = k), P(X > k), F-Schreibweise
+    5  Mindestens, höchstens, mehr als …   Formulierung -> Trefferzahlen -> F-Ausdruck -> Wert
+    6  Sigma-Umgebungen vergleichen        μ, σ, 1σ/2σ/3σ, nach innen runden, Faustregel prüfen
+    7  Erwartete Schwankungen im Alltag    Rezept in 6 Schritten mit Antwortsatz
+  Überblick
+    8  Welche Karte?                       Stichwort aus der Aufgabe -> passende Karte
+
+--------------------------------------------------------------
+WEG A: Nur am eigenen PC/Laptop nutzen (sofort, ohne Hosting)
+--------------------------------------------------------------
+  index.html doppelklicken -> öffnet im Browser, läuft komplett offline.
+  (Installieren als App geht auf diesem Weg nicht, Nutzung aber voll.)
+
+--------------------------------------------------------------
+WEG B: Als echte App auf Handy und PC (empfohlen für den Schüler)
+--------------------------------------------------------------
+Die App muss einmal unter einer https-Adresse liegen. Danach kann jeder
+sie installieren; ab dann läuft sie offline vom Startbildschirm.
+
+1. Ordner online stellen (kostenlos), z. B. mit GitHub Pages:
+   - Konto auf github.com anlegen, neues öffentliches Repository erstellen
+     (z. B. "stochastik-werkstatt")
+   - "Add file" -> "Upload files" -> den INHALT dieses Ordners hochladen
+     (index.html, manifest.webmanifest, sw.js, Ordner icons)
+   - Settings -> Pages -> Branch "main", Ordner "/ (root)" -> Save
+   - Nach 1–2 Minuten erreichbar unter:
+       https://<benutzername>.github.io/stochastik-werkstatt/
+   Alternativ geht jeder andere Anbieter für statische Seiten
+   (z. B. Netlify oder Cloudflare Pages: Ordner per Drag & Drop hochladen).
+
+2. Link an den Schüler schicken.
+
+3. Installieren:
+   Android (Chrome):  Menü (⋮) -> "App installieren" bzw.
+                      "Zum Startbildschirm hinzufügen"
+   iPhone (Safari):   Teilen-Symbol -> "Zum Home-Bildschirm"
+   PC (Chrome/Edge):  Installieren-Symbol rechts in der Adressleiste
+
+4. Fertig: Das Symbol liegt auf dem Startbildschirm, die App öffnet im
+   Vollbild und funktioniert auch ohne Internet.
+
+Direkt zu einer Karte springen: Adresse mit #k1 … #k8 ergänzen,
+z. B.  .../stochastik-werkstatt/#k5  (mindestens / höchstens …).
+
+Update einspielen: neue index.html hochladen und in sw.js die Versionsnummer
+(stochastik-werkstatt-v1) um eins erhöhen. Beim nächsten Öffnen mit Internet
+holt sich die App die neue Fassung.
