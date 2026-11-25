@@ -106,6 +106,21 @@ input[type=range]{accent-color:var(--ink)}
 .kw td{padding:5px 4px;border-bottom:1px solid var(--line);vertical-align:top}
 .kw td:last-child{text-align:right;white-space:nowrap}
 .kw button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:2px 8px;cursor:pointer}
+.frames{display:flex;flex-direction:column;gap:6px}
+.frames button{font:inherit;text-align:left;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:7px 10px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.frames button b{font-size:.88rem} .frames button span{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+.frames button[data-state="ok"]{border-color:var(--vr);background:color-mix(in srgb,var(--vr) 16%,transparent)}
+.frames button[data-state="bad"]{border-color:var(--hit);background:color-mix(in srgb,var(--hit) 14%,transparent)}
+.ttext{font-size:.92rem;line-height:1.9}
+.tok{font:inherit;font-size:.9rem;border:1px dashed var(--muted);background:transparent;color:var(--ink);border-radius:5px;padding:0 5px;cursor:pointer;line-height:1.5}
+.tok:hover{border-color:var(--ink);background:var(--bg)} .tok.used{border-style:solid;border-color:var(--va);background:color-mix(in srgb,var(--va) 22%,transparent);font-weight:600}
+.tok.wrongtok{border-color:var(--hit);background:color-mix(in srgb,var(--hit) 18%,transparent)}
+.slots{display:flex;flex-wrap:wrap;gap:6px}
+.slot{font:inherit;font-family:var(--f-mono);font-size:.84rem;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:5px 9px;cursor:pointer}
+.slot.active{border-color:var(--vb);box-shadow:0 0 0 3px color-mix(in srgb,var(--vb) 30%,transparent)}
+.slot.ok{border-color:var(--vr);background:color-mix(in srgb,var(--vr) 16%,transparent)} .slot.bad{border-color:var(--hit);background:color-mix(in srgb,var(--hit) 16%,transparent)}
+.slot i{font-style:normal;color:var(--muted)}
+.fslot{fill:var(--bg);stroke:var(--line);stroke-width:2} .fslot.ok{stroke:var(--vr)} .fslot.bad{stroke:var(--hit)} .fslot.active{stroke:var(--vb);stroke-width:3}
 .dl{display:flex;flex-direction:column;gap:6px}
 .dlitem{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);text-decoration:none}
 .dlitem:hover{border-color:var(--ink)}
@@ -833,7 +848,7 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
 // =====================================================================
 // Karte 8: Welche Karte?
 // =====================================================================
-const KW = [['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufallsgröße, Nettogewinn, Erwartungswert, fairer Einsatz, Varianz, σ','k2'],['Bernoulli-Kette, Binomialkoeffizient, „von Hand“, Bernoulli-Formel','k3'],['Diagramm ablesen, Tabelle, kumuliert, F-Schreibweise, B<sub>n;p</sub>(k)','k4'],['genau / mindestens / höchstens / mehr als / weniger als, Modellannahmen','k5'],['Sigma-Umgebung, μ und σ, 68,3 % / 95,4 % / 99,7 % vergleichen','k6'],['Bereich im Sachzusammenhang, „in 95,4 % der Fälle“, erwartete Schwankung','k7']];
+const KW = [['Klausur-Training: erst die Zielformel, dann die Elemente im Text finden','k9'],['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufallsgröße, Nettogewinn, Erwartungswert, fairer Einsatz, Varianz, σ','k2'],['Bernoulli-Kette, Binomialkoeffizient, „von Hand“, Bernoulli-Formel','k3'],['Diagramm ablesen, Tabelle, kumuliert, F-Schreibweise, B<sub>n;p</sub>(k)','k4'],['genau / mindestens / höchstens / mehr als / weniger als, Modellannahmen','k5'],['Sigma-Umgebung, μ und σ, 68,3 % / 95,4 % / 99,7 % vergleichen','k6'],['Bereich im Sachzusammenhang, „in 95,4 % der Fälle“, erwartete Schwankung','k7']];
 scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
  html: UI.q('Welches Stichwort steht in der Aufgabe – und was frage ich mich, bevor ich rechne?') +
   `<div class="task"><b>Lesefahrplan vor jeder Rechnung:</b><ol class="steps" style="margin-top:6px">` +
@@ -857,6 +872,174 @@ scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
   svg.append(T(450, 520, 'Teil A ohne Hilfsmittel: Karten 1–3 · Teil B mit CAS: Karten 4–7', 't m', 'middle', 14));
  }
 });
+
+// =====================================================================
+// Karte 9: Zielformel zuerst (Klausur-Trainer)
+// =====================================================================
+const FRAMES = {
+ pfad:   {name:'Pfadregeln im Baumdiagramm', f:'P(Pfad) = P(1. Zug) · P(2. Zug) ;  P(E) = Σ P(Pfade)', why:'Urne, nacheinander ziehen, ohne/mit Zurücklegen', card:'1'},
+ ex:     {name:'Erwartungswert einer Zufallsgröße', f:'E(X) = Σ k · P(X = k)  mit  k = Auszahlung − Einsatz', why:'Zufallsgröße, Nettogewinn, Einsatz, Auszahlung', card:'2'},
+ fair:   {name:'Fairer Einsatz', f:'fair ⇔ E(X) = 0 ⇔ Einsatz = Σ Auszahlung · P', why:'„fairer Einsatz“ gesucht', card:'2'},
+ bern:   {name:'Bernoulli-Formel', f:'P(X = k) = (n über k) · pᵏ · (1 − p)ⁿ⁻ᵏ', why:'Bernoulli-Kette, genau k Treffer, von Hand', card:'3'},
+ bereich:{name:'Bereich der Binomialverteilung', f:'P(a ≤ X ≤ b) = F(b) − F(a − 1)', why:'binomialverteilt + mindestens / höchstens / mehr als / weniger als', card:'5'},
+ sigma:  {name:'Sigma-Umgebung', f:'[μ − zσ ; μ + zσ]  mit  μ = n · p,  σ = √(n · p · (1 − p))', why:'σ-Umgebung, 68,3 % / 95,4 % / 99,7 %, Bereich „fast immer“', card:'6'}
+};
+const EVP = {'zwei rote':['RR'], 'zwei blaue':['BB'], 'genau eine rote':['RB','BR'], 'genau eine blaue':['RB','BR'], 'mindestens eine rote':['RR','RB','BR']};
+const TASKS = [
+ {id:'A1b', frame:'pfad', text:'In einer Urne liegen {3} rote und {2} blaue Kugeln. Zwei Kugeln werden nacheinander zufällig [ohne Zurücklegen] gezogen. Berechnen Sie die Wahrscheinlichkeit für [zwei rote] Kugeln.',
+  slots:[{id:'r',label:'rote Kugeln r',kind:'num',ok:3},{id:'b',label:'blaue Kugeln b',kind:'num',ok:2},{id:'modus',label:'Modus',kind:'phrase',ok:'ohne Zurücklegen',tip:'Das Umkehrwort vor „Zurücklegen“ legt fest, ob sich die Urne ändert.'},{id:'ev',label:'Ereignis',kind:'phrase',ok:'zwei rote',tip:'Gesucht ist das Ereignis am Ende des Satzes.'}], go:{card:'k1',set:{r:3,b:2,mode:0,ev:0}}},
+ {id:'B1c', frame:'pfad', text:'In einer Urne liegen {4} rote und {2} blaue Kugeln. Zwei Kugeln werden nacheinander zufällig [ohne Zurücklegen] gezogen. Berechnen Sie die Wahrscheinlichkeit für [genau eine rote] Kugel.',
+  slots:[{id:'r',label:'rote Kugeln r',kind:'num',ok:4},{id:'b',label:'blaue Kugeln b',kind:'num',ok:2},{id:'modus',label:'Modus',kind:'phrase',ok:'ohne Zurücklegen'},{id:'ev',label:'Ereignis',kind:'phrase',ok:'genau eine rote',tip:'„genau eine“ heißt: zwei Pfade, RB und BR.'}], go:{card:'k1',set:{r:4,b:2,mode:0,ev:1}}},
+ {id:'D1b', frame:'pfad', text:'In einer Urne liegen {2} rote und {4} blaue Kugeln. Zwei Kugeln werden nacheinander zufällig [mit Zurücklegen] gezogen. Berechnen Sie die Wahrscheinlichkeit für [zwei rote] Kugeln.',
+  slots:[{id:'r',label:'rote Kugeln r',kind:'num',ok:2},{id:'b',label:'blaue Kugeln b',kind:'num',ok:4},{id:'modus',label:'Modus',kind:'phrase',ok:'mit Zurücklegen',tip:'Hier steht „mit“: die Urne bleibt in beiden Zügen gleich.'},{id:'ev',label:'Ereignis',kind:'phrase',ok:'zwei rote'}], go:{card:'k1',set:{r:2,b:4,mode:1,ev:0}}},
+ {id:'A2b', frame:'ex', text:'Ein fairer Würfel wird einmal geworfen. Bei 1, 2 oder 3 gibt es keine Auszahlung ({0} €), bei 4 oder 5 werden {4} € ausgezahlt, bei 6 werden {8} € ausgezahlt. Der Einsatz beträgt {3} €. Die Zufallsgröße X bezeichnet den Nettogewinn in Euro. Berechnen Sie E(X).',
+  slots:[{id:'e',label:'Einsatz',kind:'num',ok:3,tip:'Der Einsatz wird in jedem Fall bezahlt.'},{id:'a1',label:'Auszahlung₁',kind:'num',ok:0},{id:'p1',label:'P₁',kind:'choice',opts:['3/6','2/6','1/6'],ok:'3/6',tip:'Drei von sechs Augenzahlen (1, 2, 3).'},{id:'a2',label:'Auszahlung₂',kind:'num',ok:4},{id:'p2',label:'P₂',kind:'choice',opts:['3/6','2/6','1/6'],ok:'2/6'},{id:'a3',label:'Auszahlung₃',kind:'num',ok:8},{id:'p3',label:'P₃',kind:'choice',opts:['3/6','2/6','1/6'],ok:'1/6'}], go:{card:'k2',set:{g:0,e:3}}},
+ {id:'B2b', frame:'ex', text:'In einer Trommel liegen acht gleich wahrscheinliche Lose. Vier sind Nieten ohne Auszahlung ({0} €), drei bringen jeweils {4} € und eines bringt {12} €. Der Einsatz für ein Los beträgt {4} €. X bezeichnet den Nettogewinn in Euro. Berechnen Sie E(X).',
+  slots:[{id:'e',label:'Einsatz',kind:'num',ok:4,tip:'Der Einsatz steht im Satz mit „Einsatz“, nicht die Auszahlung 4 €.'},{id:'a1',label:'Auszahlung₁',kind:'num',ok:0},{id:'p1',label:'P₁',kind:'choice',opts:['4/8','3/8','1/8'],ok:'4/8'},{id:'a2',label:'Auszahlung₂',kind:'num',ok:4},{id:'p2',label:'P₂',kind:'choice',opts:['4/8','3/8','1/8'],ok:'3/8'},{id:'a3',label:'Auszahlung₃',kind:'num',ok:12},{id:'p3',label:'P₃',kind:'choice',opts:['4/8','3/8','1/8'],ok:'1/8'}], go:{card:'k2',set:{g:1,e:4}}},
+ {id:'A5c', frame:'fair', text:'Zum Würfelspiel (bei 1, 2 oder 3 gibt es nichts ({0} €), bei 4 oder 5 werden {4} € ausgezahlt, bei 6 werden {8} € ausgezahlt) soll ein [fairer Einsatz] gefunden werden. Die Auszahlungen bleiben gleich. Berechnen Sie den Einsatz.',
+  slots:[{id:'a1',label:'Auszahlung₁',kind:'num',ok:0},{id:'p1',label:'P₁',kind:'choice',opts:['3/6','2/6','1/6'],ok:'3/6'},{id:'a2',label:'Auszahlung₂',kind:'num',ok:4},{id:'p2',label:'P₂',kind:'choice',opts:['3/6','2/6','1/6'],ok:'2/6'},{id:'a3',label:'Auszahlung₃',kind:'num',ok:8},{id:'p3',label:'P₃',kind:'choice',opts:['3/6','2/6','1/6'],ok:'1/6'}], go:{card:'k2',set:{g:0,e:8/3}}},
+ {id:'A3b', frame:'bern', text:'X zählt die Treffer einer Bernoulli-Kette mit n = {3} und p = {0,5}. Berechnen Sie P(X = {2}) mit der Bernoulli-Formel.',
+  slots:[{id:'n',label:'n',kind:'num',ok:3},{id:'p',label:'p',kind:'num',ok:0.5},{id:'k',label:'k',kind:'num',ok:2,tip:'k ist die Trefferzahl in P(X = k).'}], go:{card:'k3',set:{n:3,p:0.5,k:2}}},
+ {id:'B3b', frame:'bern', text:'X zählt die Treffer einer Bernoulli-Kette mit n = {4} und p = {0,5}. Berechnen Sie P(X = {1}) mit der Bernoulli-Formel.',
+  slots:[{id:'n',label:'n',kind:'num',ok:4},{id:'p',label:'p',kind:'num',ok:0.5},{id:'k',label:'k',kind:'num',ok:1}], go:{card:'k3',set:{n:4,p:0.5,k:1}}},
+ {id:'A5b', frame:'bereich', text:'Eine Spielerin führt {18} unabhängige Würfe aus und trifft jeweils mit Wahrscheinlichkeit {0,62}. X zählt die Treffer. Bestimmen Sie die Wahrscheinlichkeit für [mindestens 7] Treffer.',
+  slots:[{id:'n',label:'n',kind:'num',ok:18},{id:'p',label:'p',kind:'num',ok:0.62},{id:'ev',label:'Formulierung',kind:'phrase',ok:'mindestens 7'},{id:'a',label:'a (untere Grenze)',kind:'choice',opts:[6,7,8],ok:7,tip:'„mindestens 7“ ⇒ X ≥ 7, die 7 gehört dazu.'},{id:'b',label:'b (obere Grenze)',kind:'choice',opts:[7,17,18],ok:18,tip:'Nach oben ist nichts begrenzt: b = n.'}], go:{card:'k5',set:{n:18,p:0.62,k:7,k2:11,m:1,pre:0}}},
+ {id:'B5b', frame:'bereich', text:'Eine Maschine produziert {25} Teile. Jedes Teil ist unabhängig mit Wahrscheinlichkeit {0,18} fehlerhaft. X zählt die fehlerhaften Teile, die hier als Treffer gelten. Bestimmen Sie die Wahrscheinlichkeit für [mehr als 3] Treffer.',
+  slots:[{id:'n',label:'n',kind:'num',ok:25},{id:'p',label:'p',kind:'num',ok:0.18,tip:'Treffer = fehlerhaft, also p = 0,18.'},{id:'ev',label:'Formulierung',kind:'phrase',ok:'mehr als 3'},{id:'a',label:'a (untere Grenze)',kind:'choice',opts:[2,3,4],ok:4,tip:'„mehr als 3“ ⇒ X > 3, also ab 4.'},{id:'b',label:'b (obere Grenze)',kind:'choice',opts:[3,24,25],ok:25}], go:{card:'k5',set:{n:25,p:0.18,k:3,k2:6,m:3,pre:1}}},
+ {id:'B5b6', frame:'bereich', text:'Eine Maschine produziert {25} Teile. Jedes Teil ist unabhängig mit Wahrscheinlichkeit {0,18} fehlerhaft. X zählt die fehlerhaften Teile. Bestimmen Sie die Wahrscheinlichkeit für [mindestens 3, aber weniger als 6] Treffer.',
+  slots:[{id:'n',label:'n',kind:'num',ok:25},{id:'p',label:'p',kind:'num',ok:0.18},{id:'ev',label:'Formulierung',kind:'phrase',ok:'mindestens 3, aber weniger als 6'},{id:'a',label:'a (untere Grenze)',kind:'choice',opts:[2,3,4],ok:3,tip:'„mindestens 3“ ⇒ 3 gehört dazu.'},{id:'b',label:'b (obere Grenze)',kind:'choice',opts:[5,6,25],ok:5,tip:'„weniger als 6“ ⇒ X < 6, also bis 5.'}], go:{card:'k5',set:{n:25,p:0.18,k:3,k2:6,m:5,pre:1}}},
+ {id:'C5b', frame:'bereich', text:'Ein Online-Shop verschickt {30} Pakete. Jedes Paket kommt unabhängig mit Wahrscheinlichkeit {0,12} beschädigt an. X zählt die beschädigten Pakete. Bestimmen Sie die Wahrscheinlichkeit für [weniger als 4] Treffer.',
+  slots:[{id:'n',label:'n',kind:'num',ok:30},{id:'p',label:'p',kind:'num',ok:0.12},{id:'ev',label:'Formulierung',kind:'phrase',ok:'weniger als 4'},{id:'a',label:'a (untere Grenze)',kind:'choice',opts:[0,3,4],ok:0,tip:'Nach unten ist nichts begrenzt: a = 0.'},{id:'b',label:'b (obere Grenze)',kind:'choice',opts:[3,4,5],ok:3,tip:'„weniger als 4“ ⇒ X < 4, also bis 3.'}], go:{card:'k5',set:{n:30,p:0.12,k:4,k2:7,m:4,pre:2}}},
+ {id:'A6b', frame:'sigma', text:'Z zählt Treffer einer Binomialverteilung mit n = {100} und p = {0,5}. Bestimmen Sie die [2σ-Umgebung] und runden Sie nach innen auf ganze Trefferzahlen.',
+  slots:[{id:'n',label:'n',kind:'num',ok:100},{id:'p',label:'p',kind:'num',ok:0.5},{id:'sich',label:'Sicherheit / Umgebung',kind:'phrase',ok:'2σ-Umgebung'},{id:'z',label:'z',kind:'choice',opts:[1,2,3],ok:2}], go:{card:'k6',set:{n:100,p:0.5,z:2,pre:0}}},
+ {id:'A7b', frame:'sigma', text:'Eine Gärtnerei sät {100} Samen aus. Jeder Samen keimt unabhängig mit Wahrscheinlichkeit {0,4}. Gesucht ist ein Bereich, in dem die Zahl der gekeimten Samen ungefähr in [95,4 %] der Versuche liegt.',
+  slots:[{id:'n',label:'n',kind:'num',ok:100},{id:'p',label:'p',kind:'num',ok:0.4},{id:'sich',label:'Sicherheit / Umgebung',kind:'phrase',ok:'95,4 %',tip:'Die Prozentzahl verrät die Umgebung.'},{id:'z',label:'z',kind:'choice',opts:[1,2,3],ok:2,tip:'95,4 % ⇒ 2σ.'}], go:{card:'k7',set:{c:0,z:2}}},
+ {id:'B7b', frame:'sigma', text:'Ein Basketballspieler führt {80} Freiwürfe aus. Jeder Wurf trifft unabhängig mit Wahrscheinlichkeit {0,8}. Gesucht ist ein Bereich, in dem die Trefferzahl ungefähr in [95,4 %] solcher Trainingseinheiten liegt.',
+  slots:[{id:'n',label:'n',kind:'num',ok:80},{id:'p',label:'p',kind:'num',ok:0.8},{id:'sich',label:'Sicherheit / Umgebung',kind:'phrase',ok:'95,4 %'},{id:'z',label:'z',kind:'choice',opts:[1,2,3],ok:2}], go:{card:'k7',set:{c:1,z:2}}},
+ {id:'C7b', frame:'sigma', text:'Eine Firma prüft {200} LED-Lampen. Jede Lampe besteht den Test unabhängig mit Wahrscheinlichkeit {0,9}. Gesucht ist ein Bereich, in dem die Zahl der bestandenen Lampen ungefähr in [99,7 %] der Prüfungen liegt.',
+  slots:[{id:'n',label:'n',kind:'num',ok:200},{id:'p',label:'p',kind:'num',ok:0.9},{id:'sich',label:'Sicherheit / Umgebung',kind:'phrase',ok:'99,7 %'},{id:'z',label:'z',kind:'choice',opts:[1,2,3],ok:3,tip:'99,7 % ⇒ 3σ.'}], go:{card:'k7',set:{c:2,n:200,p:0.9,z:3}}}
+];
+const parseNum = s => parseFloat(String(s).replace(',','.'));
+const showVal = v => typeof v === 'number' ? fmt(v, 2) : String(v);
+const fracVal = s => { const [a,b] = String(s).split('/'); return b ? (+a)/(+b) : +a; };
+function trainerCompute(frame, v){
+  const L = []; let result = '', chips = [];
+  if (frame === 'pfad') {
+    const r = v.r, b = v.b, N = r + b, same = v.modus === 'mit Zurücklegen';
+    const p1 = {R:[r,N], B:[b,N]}, p2 = a => same ? p1 : (a === 'R' ? {R:[r-1,N-1], B:[b,N-1]} : {R:[r,N-1], B:[b-1,N-1]});
+    const keys = EVP[v.ev] || ['RR'], parts = keys.map(k => { const f1 = p1[k[0]], f2 = p2(k[0])[k[1]]; return {k, f1, f2, num:f1[0]*f2[0], den:f1[1]*f2[1]}; });
+    const den = parts[0].den, tot = sum(parts.map(q => q.num));
+    L.push(`<span class="m">Buchstaben:</span> ${FRAMES.pfad.f}`);
+    parts.forEach(q => L.push(`P(${q.k}) = ${q.f1[0]}/${q.f1[1]} · ${q.f2[0]}/${q.f2[1]} = ${frac(q.num,q.den)}`));
+    if (parts.length > 1) L.push(`P(${v.ev}) = ${parts.map(q => frac(q.num,q.den)).join(' + ')} = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
+    result = `P(${v.ev}) = ${frac(tot,den)} ≈ ${fmt(tot/den,3)}`;
+    chips.push(cond(same ? 'mit Zurücklegen ⇒ Brüche in beiden Zügen gleich' : `ohne Zurücklegen ⇒ 2. Zug: Nenner ${N-1}`));
+  } else if (frame === 'ex' || frame === 'fair') {
+    const A = [v.a1, v.a2, v.a3], P = [v.p1, v.p2, v.p3], Pv = P.map(fracVal), e = frame === 'ex' ? v.e : null;
+    if (frame === 'ex') { const mu = sum(A.map((a,i) => (a-e)*Pv[i]));
+      L.push(`<span class="m">Buchstaben:</span> E(X) = Σ k · P(X = k) = (a₁ − e)·P₁ + (a₂ − e)·P₂ + (a₃ − e)·P₃`);
+      L.push(`E(X) = ${A.map((a,i) => `(${a} − ${e})·${P[i]}`).join(' + ')} = ${A.map((a,i) => `${fmt(a-e)}·${P[i]}`).join(' + ')} = <b>${fmt(mu,3)} €</b>`);
+      result = `E(X) = ${fmt(mu,2)} € → ${Math.abs(mu) < 1e-9 ? 'fair' : mu < 0 ? 'Nachteil Spielerin' : 'Vorteil Spielerin'}`;
+      chips.push(cond(`Fair ⇔ E(X) = 0: hier ${fmt(mu,2)} € ${Math.abs(mu) < 1e-9 ? '= 0' : '≠ 0'}`, Math.abs(mu) < 1e-9 ? true : undefined, 'Fair?'), cond(`${P.join(' + ')} = 1`, Math.abs(sum(Pv)-1) < 1e-9, 'Kontrolle'));
+    } else { const ea = sum(A.map((a,i) => a*Pv[i]));
+      L.push(`<span class="m">Buchstaben:</span> Einsatz = E(Auszahlung) = a₁·P₁ + a₂·P₂ + a₃·P₃`);
+      L.push(`Einsatz = ${A.map((a,i) => `${a}·${P[i]}`).join(' + ')} = <b>${fmt(ea,2)} €</b>`);
+      result = `Fairer Einsatz = ${fmt(ea,2)} €`;
+      chips.push(cond('Fair ⇔ E(X) = 0 ⇔ im Mittel genauso viel eingezahlt wie ausgezahlt'));
+    }
+  } else if (frame === 'bern') {
+    const {n,p,k} = v, C = choose(n,k), one = Math.pow(p,k)*Math.pow(1-p,n-k);
+    L.push(`<span class="m">Buchstaben:</span> ${FRAMES.bern.f}`);
+    L.push(`P(X = ${k}) = (${n} über ${k}) · ${fmt(p,2)}${sup(k)} · ${fmt(1-p,2)}${sup(n-k)} = ${C} · ${fix(one,4)} = <b>${fix(C*one,4)}</b>`);
+    result = `P(X = ${k}) = ${fix(C*one,4)}`;
+    chips.push(cond('Bernoulli-Kette: n fest · Treffer/Niete · p gleich · unabhängig'));
+  } else if (frame === 'bereich') {
+    const {n,p} = v, a = +v.a, b = +v.b, c = cdf(binom(n,p)), P = pRange(c,a,b);
+    L.push(`<span class="m">Buchstaben:</span> P(a ≤ X ≤ b) = F(b) − F(a − 1)`);
+    L.push(`P(${a} ≤ X ≤ ${b}) = ${Fs(n,p)}(${b}) − ${Fs(n,p)}(${fmt(a-1,0)}) = ${fix(cF(c,b),4)} − ${fix(cF(c,a-1),4)} = <b>${fix(P,4)}</b>`);
+    result = `P(${a} ≤ X ≤ ${b}) = ${fix(P,4)}`;
+    chips.push(cond(`„${v.ev}“ ⇒ Grenzen a = ${a}, b = ${b}`, undefined, 'Grenze'));
+  } else if (frame === 'sigma') {
+    const {n,p} = v, z = +v.z, mu = n*p, sd = Math.sqrt(n*p*(1-p)), lo = mu-z*sd, hi = mu+z*sd, a = Math.max(0,Math.ceil(lo-1e-9)), b = Math.min(n,Math.floor(hi+1e-9)), c = cdf(binom(n,p)), P = pRange(c,a,b);
+    L.push(`<span class="m">Buchstaben:</span> μ = n · p ; σ = √(n · p · (1 − p)) ; [μ − zσ ; μ + zσ]`);
+    L.push(`μ = ${n} · ${fmt(p,2)} = ${fmt(mu,2)} ; σ = √(${n} · ${fmt(p,2)} · ${fmt(1-p,2)}) = √${fmt(n*p*(1-p),3)} ≈ ${fmt(sd,3)}`);
+    L.push(`[${fmt(mu,2)} − ${z}·${fmt(sd,3)} ; ${fmt(mu,2)} + ${z}·${fmt(sd,3)}] = [${fmt(lo,2)} ; ${fmt(hi,2)}] → nach innen <b>${a} ≤ X ≤ ${b}</b> (P = ${pct(P,1)})`);
+    result = `${a} ≤ X ≤ ${b}  (P ≈ ${pct(P,1)})`;
+    chips.push(cond(`Laplace σ > 3: σ = ${fmt(sd,2)}`, sd > 3), cond('Grenzen mit ungerundetem σ, dann nach innen runden'));
+  }
+  return {L, result, chips};
+}
+scene('k9', {card:'9', title:'Zielformel zuerst', grp:'Training', hint:'Links die Zielformel mit Leerstellen, rechts die Aufgabe: Tippe die Elemente an, die die Leerstellen füllen',
+ html: UI.q('Welche Zielformel passt – und welche Elemente im Text füllen ihre Leerstellen?') +
+  `<div><div class="lbl">Aufgabe wählen</div>${UI.seg('k9t', TASKS.map(t => t.id))}<div class="row" style="margin-top:6px">${UI.btn('k9rand','Zufällige Aufgabe',true)}</div></div>` +
+  `<div class="task" id="k9text"></div>` +
+  `<div><div class="lbl">Schritt 1 · Zielformel (Rahmen) wählen</div><div class="frames" id="k9frames">${Object.entries(FRAMES).map(([k,f]) => `<button data-f="${k}"><b>${f.name}</b><span>${f.f}</span></button>`).join('')}</div></div>` +
+  `<div id="k9s2" hidden><div class="lbl">Schritt 2 · Elemente im Text antippen, die die Leerstellen füllen</div><div class="slots" id="k9slots"></div><div class="seg" id="k9opts" style="margin-top:6px"></div></div>` +
+  `<div id="k9s3" hidden><div class="lbl">Schritt 3 · Formel ausformulieren und rechnen</div><div class="eq col" id="k9eq"></div><div class="row" style="margin-top:8px">${UI.btn('k9go','Zur Karte mit diesen Werten')}${UI.btn('k9kw','Signalwörter zeigen',true)}</div></div>` +
+  UI.st('k9st'),
+ init(){ const S = this; S.t = 0; S.reset();
+  onSeg('k9t', v => { S.t = v; S.reset(); S.upd(); });
+  $('k9rand').addEventListener('click', () => { S.t = Math.floor(Math.random()*TASKS.length); setSeg('k9t', S.t); S.reset(); S.upd(); });
+  $('k9frames').addEventListener('click', e => { const b = e.target.closest('button[data-f]'); if (!b || S.step !== 1) return; S.frameTry = b.dataset.f; if (b.dataset.f === S.task().frame) { S.frame = b.dataset.f; S.step = 2; } S.upd(); });
+  $('k9text').addEventListener('click', e => { const b = e.target.closest('.tok'); if (!b || S.step !== 2) return; S.fill(b.dataset.t, b.dataset.t === 'num' ? parseNum(b.dataset.v) : b.dataset.v, b); });
+  $('k9slots').addEventListener('click', e => { const b = e.target.closest('.slot'); if (!b || S.step !== 2) return; S.active = +b.dataset.i; S.upd(); });
+  $('k9opts').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || S.step !== 2) return; S.fill('choice', b.dataset.v); });
+  $('k9go').addEventListener('click', () => { const g = S.task().go; go(g.card); const sc = scenes[g.card]; if (sc.preset) sc.preset(g.set); });
+  $('k9kw').addEventListener('click', () => { S.showKw = !S.showKw; S.upd(); });
+ },
+ task(){ return TASKS[this.t]; },
+ reset(){ this.step = 1; this.frame = null; this.frameTry = null; this.vals = {}; this.state = {}; this.active = 0; this.showKw = false; this.wrongTok = null; },
+ show(){ this.upd(); },
+ fill(kind, value, tokEl){ const S = this, T = S.task(), sl = T.slots[S.active]; if (!sl) return;
+  const matchKind = (sl.kind === kind) || (sl.kind === 'choice' && kind === 'choice');
+  if (!matchKind) { stat('k9st', `<b>Falscher Typ.</b> Die Leerstelle „${sl.label}“ braucht ${sl.kind === 'num' ? 'eine Zahl' : sl.kind === 'phrase' ? 'eine Formulierung aus dem Text' : 'eine Auswahl unten'}.`, 'bad'); return; }
+  const ok = sl.kind === 'num' ? Math.abs(value - sl.ok) < 1e-9 : String(value) === String(sl.ok);
+  S.vals[sl.id] = value; S.state[sl.id] = ok ? 'ok' : 'bad';
+  if (ok) { stat('k9st', `<b>${sl.label} = ${showVal(value)}</b> ✓`, 'ok'); const next = T.slots.findIndex((s,i) => i > S.active && S.state[s.id] !== 'ok'); const any = T.slots.findIndex(s => S.state[s.id] !== 'ok'); S.active = next >= 0 ? next : any; if (T.slots.every(s => S.state[s.id] === 'ok')) S.step = 3; }
+  else { stat('k9st', `<b>Nicht ${sl.label}.</b> ${sl.tip || 'Lies den Satz noch einmal: Welches Element bestimmt diese Leerstelle?'}`, 'bad'); S.wrongTok = tokEl || null; }
+  S.upd();
+ },
+ upd(){ const S = this, T = S.task(), F = FRAMES[T.frame]; setSeg('k9t', S.t);
+  // Aufgabentext mit antippbaren Elementen
+  const used = new Set(Object.entries(S.vals).filter(([id,v]) => S.state[id] === 'ok').map(([id,v]) => String(v)));
+  const plain = T.text.replace(/\{([^}]+)\}|\[([^\]]+)\]/g, (m,a,b) => a || b);
+  $('k9text').innerHTML = S.showKw ? taskHTML('k9text', plain) : `<b>Aufgabe (${T.id.slice(0,1)} · ${T.id.slice(1)}):</b> <span class="ttext">` + T.text.replace(/\{([^}]+)\}|\[([^\]]+)\]/g, (m,a,b) => { const v = a || b, t = a ? 'num' : 'phrase', isUsed = used.has(String(t === 'num' ? parseNum(v) : v)); return `<button class="tok${isUsed ? ' used' : ''}" data-t="${t}" data-v="${v}">${v}</button>`; }) + `</span>`;
+  // Schritt 1
+  [...$('k9frames').children].forEach(b => { b.dataset.state = S.step >= 2 && b.dataset.f === T.frame ? 'ok' : (S.frameTry === b.dataset.f && S.frameTry !== T.frame) ? 'bad' : ''; b.disabled = S.step >= 2; });
+  if (S.step === 1) { if (S.frameTry && S.frameTry !== T.frame) stat('k9st', `<b>Nicht ${FRAMES[S.frameTry].name}.</b> Die Stichwörter im Text (${F.why}) zeigen auf eine andere Zielformel.`, 'bad'); else stat('k9st', 'Zuerst den Rahmen festlegen: Welche Formel liefert am Ende die Antwort? Dann erst Zahlen suchen.'); }
+  // Schritt 2
+  $('k9s2').hidden = S.step < 2; $('k9s3').hidden = S.step < 3;
+  if (S.step >= 2) {
+    $('k9slots').innerHTML = T.slots.map((sl,i) => `<button class="slot${S.state[sl.id] ? ' ' + S.state[sl.id] : ''}${i === S.active && S.step === 2 ? ' active' : ''}" data-i="${i}">${sl.label} = <i>${sl.id in S.vals ? showVal(S.vals[sl.id]) : '?'}</i></button>`).join('');
+    const sl = T.slots[S.active]; $('k9opts').innerHTML = (S.step === 2 && sl && sl.kind === 'choice') ? `<span class="m" style="font-size:.8rem;align-self:center">${sl.label}:</span>` + sl.opts.map(o => `<button data-v="${o}">${o}</button>`).join('') : '';
+    if (S.step === 2 && !S.state[sl && sl.id]) stat('k9st', sl.kind === 'choice' ? `Leerstelle „${sl.label}“: Wähle unten den passenden Wert.` : `Leerstelle „${sl.label}“: Tippe im Text ${sl.kind === 'num' ? 'die Zahl' : 'die Formulierung'} an, die sie bestimmt.`);
+  }
+  if (S.step === 3) { const R = trainerCompute(T.frame, S.vals); lines('k9eq', [...R.L, `<b>Ergebnis:</b> ${R.result}`, ...R.chips]); $('k9go').textContent = `Zur Karte ${F.card} mit diesen Werten`; stat('k9st', `<b>Alle Leerstellen gefüllt.</b> Rahmen: ${F.name}. Jetzt Formel mit Buchstaben, dann Zahlen einsetzen, dann Ergebnis mit Antwortsatz.`, 'ok'); }
+  S.draw(T, F, S.step === 3 ? trainerCompute(T.frame, S.vals) : null);
+ },
+ draw(T, F, R){ clear(); const S = this;
+  svg.append(T_(450, 30, S.step === 1 ? 'Schritt 1: Welche Zielformel ist der Rahmen?' : `Zielformel: ${F.name}`, 't b', 'middle', 18));
+  if (S.step === 1) { Object.values(FRAMES).forEach((f,i) => { const y = 80 + i*74; svg.append(el('rect', {x:60, y:y-24, width:780, height:60, rx:10, class:'colbg'})); svg.append(T_(80, y-6, f.name, 't b', 'start', 15)); svg.append(T_(80, y+16, f.f, 't mono m', 'start', 13)); }); return; }
+  svg.append(el('rect', {x:40, y:56, width:820, height:54, rx:10, class:'colbg'})); svg.append(T_(450, 83, F.f, 't mono b', 'middle', 19));
+  // Leerstellen als Kästen
+  const n = T.slots.length, bw = Math.min(150, (820 - (n-1)*10) / n), x0 = 450 - (n*bw + (n-1)*10)/2;
+  T.slots.forEach((sl,i) => { const x = x0 + i*(bw+10), st = S.state[sl.id] || (i === S.active && S.step === 2 ? 'active' : '');
+    svg.append(el('rect', {x, y:140, width:bw, height:70, rx:10, class:'fslot ' + st}));
+    svg.append(T_(x+bw/2, 160, sl.label, 't m', 'middle', 12)); svg.append(T_(x+bw/2, 190, sl.id in S.vals ? showVal(S.vals[sl.id]) : '?', 't mono b', 'middle', 20, st === 'bad' ? '--hit' : st === 'ok' ? '--va' : undefined)); });
+  svg.append(T_(450, 240, S.step === 2 ? 'Tippe im Aufgabentext die Elemente an, die diese Leerstellen bestimmen' : 'Alle Elemente gefunden – jetzt ausformulieren', 't m', 'middle', 13));
+  if (R) { const txt = R.L.map(l => l.replace(/<sub>[^<]*<\/sub>/g,'').replace(/<[^>]+>/g,'')).slice(1); txt.forEach((l,i) => svg.append(T_(450, 290 + i*34, l.length > 95 ? l.slice(0,92) + '…' : l, 't mono', 'middle', 14)));
+    svg.append(el('rect', {x:120, y:290 + txt.length*34 + 10, width:660, height:50, rx:10, class:'colbg'})); svg.append(T_(450, 290 + txt.length*34 + 36, R.result, 't b', 'middle', 18)); }
+ }
+});
+const T_ = T; // Alias, damit der Szenentext-Helfer in Karte 9 neben dem Aufgaben-Parameter T nutzbar bleibt
+
+// Presets: andere Karten mit Werten aus dem Trainer öffnen
+scenes.k1.preset = function(o){ Object.assign(this, o); setSeg('k1mode', this.mode); setSeg('k1ev', this.ev); this.lit = null; this.upd(); };
+scenes.k2.preset = function(o){ Object.assign(this, o); setSeg('k2g', this.g); this.step = 2; this.fair = false; this.upd(); };
+scenes.k3.preset = function(o){ Object.assign(this, o); $('k3k').max = this.n; this.lit = null; this.upd(); };
+scenes.k5.preset = function(o){ Object.assign(this, o); setSeg('k5m', this.m); setSeg('k5pre', this.pre ?? 2); this.upd(); };
+scenes.k6.preset = function(o){ Object.assign(this, o); setSeg('k6z', this.z-1); setSeg('k6pre', this.pre ?? 2); this.upd(); };
+scenes.k7.preset = function(o){ Object.assign(this, o); setSeg('k7c', this.c); setSeg('k7z', this.z-1); this.step = 6; this.upd(); };
 
 // ---------- Navigation ----------
 const nav = $('nav'), panels = $('panels'), hint = $('hint'); let current = null;
