@@ -202,7 +202,7 @@ function hist(o){
   return {x, y, w, xv, ymax};
 }
 // μ-Linie und Umgebung μ ± zσ, ganzzahlig nach innen gerundet [a; b]
-function drawBand(H, mu, sd, z, a, b, label){
+function drawBand(H, mu, sd, z, a, b, label, tails){
   const x1 = H.xv(mu - z*sd), x2 = H.xv(mu + z*sd);
   svg.append(el('rect', {x:x1, y:PL.T, width:Math.max(0,x2-x1), height:PL.B-PL.T, class:'band'}));
   [x1, x2].forEach(x => svg.append(el('line', {x1:x, x2:x, y1:PL.T, y2:PL.B, class:'bnd'})));
@@ -210,7 +210,19 @@ function drawBand(H, mu, sd, z, a, b, label){
   svg.append(T(H.xv(mu), PL.T-18, `μ = ${fmt(mu,2)}`, 't b ch'));
   svg.append(T(x1-5, PL.T+12, `μ − ${z}σ = ${fmt(mu-z*sd,2)}`, 't mono ca', 'end', 12));
   svg.append(T(x2+5, PL.T+12, `μ + ${z}σ = ${fmt(mu+z*sd,2)}`, 't mono ca', 'start', 12));
-  svg.append(T(450, PL.B+44, label, 't b'));
+  // Klammer unter der Achse: die nach innen gerundete Umgebung a … b
+  bracket(H.x(a) - H.w*0.4, H.x(b) + H.w*0.4, PL.B+28, label, '--va');
+  if (tails) { const ty = PL.T + 32;
+    svg.append(T((x1+x2)/2, ty, `innen ${pct(tails.inside,1)}`, 't b ca', 'middle', 15));
+    if (x1 - PL.L > 150 && a > 0) svg.append(T((PL.L+x1)/2, ty, `links: P(X ≤ ${a-1}) = ${pct(tails.left,1)}`, 't m', 'middle', 12));
+    if (PL.R - x2 > 150 && tails.right > 0) svg.append(T((x2+PL.R)/2, ty, `rechts: P(X ≥ ${b+1}) = ${pct(tails.right,1)}`, 't m', 'middle', 12));
+  }
+}
+// Waagerechte Klammer mit Beschriftung darunter
+function bracket(x1, x2, y, label, col, dy=15, up=false){
+  const arm = up ? 7 : -7;
+  svg.append(el('path', {d:`M ${x1} ${y+arm} L ${x1} ${y} L ${x2} ${y} L ${x2} ${y+arm}`, style:`fill:none;stroke:var(${col});stroke-width:2`}));
+  svg.append(T((x1+x2)/2, up ? y-12 : y+dy, label, 't b', 'middle', 13, col));
 }
 
 // Urne mit Kugeln: r rote, b blaue; gone = Farbe der gerade entnommenen Kugel (als leerer Platz gezeigt)
@@ -450,6 +462,7 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
 // =====================================================================
 scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint:'Jede Zeile ist ein Pfad; eine Spalte sammelt alle Pfade mit gleicher Trefferzahl',
  html: UI.q('Wie viele Pfade haben genau k Treffer, und was ist jeder einzelne Pfad wert?') +
+  `<div class="task" id="k3task"></div>` +
   UI.sl('k3n','n = Anzahl der Versuche',1,6,1,3) + UI.sl('k3p','p = Trefferwahrscheinlichkeit',0.05,0.95,0.05,0.5) + UI.sl('k3k','k = Anzahl der Treffer',0,3,1,2) +
   UI.chk('k3wrong','Fehlerweg: Binomialkoeffizient vergessen (nur einen Pfad zählen)') +
   `<div class="row">${UI.btn('k3play','P(X ≤ k) Spalte für Spalte aufsummieren')}</div>` +
@@ -463,6 +476,7 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
  show(){ this.lit = null; this.upd(); },
  upd(){
   const S = this, {n,p,k} = S, q = 1-p; setSl('k3n', n, 0); setSl('k3p', p, 2); setSl('k3k', k, 0);
+  $('k3task').innerHTML = `<b>Aufgabe:</b> X zählt die Treffer einer Bernoulli-Kette mit n = ${n} und p = ${fmt(p,2)}. Berechne den Binomialkoeffizienten für genau ${k} Treffer, P(X = ${k}) mit der Bernoulli-Formel und P(X ≤ ${k}) als Summe von Einzelwahrscheinlichkeiten.`;
   const arr = binom(n,p), c = cdf(arr), C = choose(n,k), one = Math.pow(p,k) * Math.pow(q,n-k);
   S.draw(arr, c);
   lines('k3eq', [
@@ -479,17 +493,25 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
   clear(); const S = this, {n,k} = S, w = (PL.R - PL.L) / (n+1), x = j => PL.L + (j+0.5) * w;
   const groups = range(0,n).map(() => []);
   for (let m = 0; m < (1 << n); m++) { const bits = []; let h = 0; for (let i = n-1; i >= 0; i--) { const b = (m >> i) & 1; bits.push(b); h += b; } groups[h].push(bits); }
-  const maxC = Math.max(...groups.map(g => g.length)), rowH = Math.min(18, (430-96) / maxC), s = Math.min(13, (w-14) / n);
+  // Ein einzelner Versuch: Balken mit Treffer-Anteil p und Nieten-Anteil 1 − p
+  const p = S.p, bx = 230, bw = 440, by = 22, bh = 24;
+  svg.append(T(bx-12, by+bh/2, 'Ein Versuch:', 't m', 'end', 13));
+  svg.append(el('rect', {x:bx, y:by, width:bw*p, height:bh, rx:5, class:'bar on'}));
+  svg.append(el('rect', {x:bx+bw*p, y:by, width:bw*(1-p), height:bh, rx:5, class:'bar dim'}));
+  svg.append(T(bx+bw*p/2, by+bh/2+1, `Treffer p = ${fmt(p,2)}`, 't nl', 'middle', 12));
+  svg.append(T(bx+bw*p+bw*(1-p)/2, by+bh/2+1, `Niete 1 − p = ${fmt(1-p,2)}`, 't', 'middle', 12));
+  svg.append(T(450, 66, `${n} Versuche hintereinander → ${1 << n} Pfade, sortiert nach Trefferzahl k`, 't m', 'middle', 12));
+  const maxC = Math.max(...groups.map(g => g.length)), rowH = Math.min(20, (438-128) / maxC), s = Math.min(16, (w-14) / n);
   const litSet = S.lit == null ? [k] : range(0, S.lit);
   for (let j = 0; j <= n; j++) {
     const on = litSet.includes(j);
-    if (on) svg.append(el('rect', {x:x(j)-w/2+3, y:36, width:w-6, height:470, rx:8, class:'colbg'}));
-    svg.append(T(x(j), 56, `k = ${j}`, 't b')); svg.append(T(x(j), 76, `${groups[j].length} Pfad${groups[j].length === 1 ? '' : 'e'}`, 't m', 'middle', 12));
-    groups[j].forEach((bits, r) => { const y0 = 96 + r*rowH, x0 = x(j) - bits.length*s/2; bits.forEach((b,i) => svg.append(el('rect', {x:x0+i*s+1, y:y0, width:s-2, height:Math.max(3, Math.min(s-2, rowH-3)), rx:2, class:'chip' + (b ? ' T' : '')}))); });
+    if (on) svg.append(el('rect', {x:x(j)-w/2+3, y:80, width:w-6, height:424, rx:8, class:'colbg'}));
+    svg.append(T(x(j), 96, `k = ${j}`, 't b')); svg.append(T(x(j), 114, `${groups[j].length} Pfad${groups[j].length === 1 ? '' : 'e'}`, 't m', 'middle', 12));
+    groups[j].forEach((bits, r) => { const y0 = 128 + r*rowH, x0 = x(j) - bits.length*s/2; bits.forEach((b,i) => svg.append(el('rect', {x:x0+i*s+1, y:y0, width:s-2, height:Math.max(3, Math.min(s-2, rowH-3)), rx:3, class:'chip' + (b ? ' T' : '')}))); });
     svg.append(T(x(j), 458, `${choose(n,j)}·${fmt(S.p,2)}${sup(j)}·${fmt(1-S.p,2)}${sup(n-j)}`, 't mono m', 'middle', 11));
     svg.append(T(x(j), 482, `P(X = ${j}) = ${fix(arr[j],4)}`, 't mono' + (on ? ' b' : ' m'), 'middle', 12));
   }
-  svg.append(T(450, 528, S.lit != null ? `P(X ≤ ${S.lit}) = ${range(0,S.lit).map(i => fix(arr[i],4)).join(' + ')} = ${fix(cF(c,S.lit),4)}` : `n = ${n} Versuche, p = ${fmt(S.p,2)} · insgesamt ${1 << n} Pfade`, 't' + (S.lit != null ? ' b' : ' m')));
+  svg.append(T(450, 528, S.lit != null ? `P(X ≤ ${S.lit}) = ${range(0,S.lit).map(i => fix(arr[i],4)).join(' + ')} = ${fix(cF(c,S.lit),4)}` : `Jede Zeile ist ein Pfad: orange = Treffer, grau = Niete · Spalte k = ${k} enthält ${choose(n,k)} Pfade`, 't' + (S.lit != null ? ' b' : ' m')));
  },
  play(){ const S = this; stopAll(); S.lit = 0; S.upd(); for (let i = 1; i <= S.k; i++) later(900*i, () => { S.lit = i; S.upd(); }); }
 });
@@ -499,6 +521,7 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
 // =====================================================================
 scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilung', hint:'Säule antippen wählt k',
  html: UI.q('Wie lese ich P(X &lt; k), P(X = k) und P(X &gt; k) aus einem Säulendiagramm oder einer Tabelle ab?') +
+  `<div class="task" id="k4task"></div>` +
   UI.seg('k4v', ['Einzelwahrscheinlichkeiten P(X = k)','Kumuliert P(X ≤ k)']) +
   UI.sl('k4n','n',1,30,1,8) + UI.sl('k4p','p',0.05,0.95,0.05,0.6) + UI.sl('k4k','k',0,8,1,4) +
   `<div class="eq col" id="k4eq"></div>` +
@@ -513,14 +536,26 @@ scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilu
  upd(){
   const S = this, {n,p,k} = S; setSl('k4n', n, 0); setSl('k4p', p, 2); setSl('k4k', k, 0);
   const arr = binom(n,p), c = cdf(arr), lt = cF(c,k-1), eq = arr[k], gt = 1 - cF(c,k);
+  $('k4task').innerHTML = `<b>Aufgabe:</b> X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}. Jede Säule zeigt ${S.v === 0 ? 'P(X = k)' : 'P(X ≤ k)'}. Lies P(X &lt; ${k}), P(X = ${k}) und P(X &gt; ${k}) näherungsweise ab und gib für jeden Wert den passenden F-Ausdruck an.`;
   clear();
-  if (S.v === 0) hist({n, arr, pick:true, cls: j => j < k ? 'lt' : j === k ? 'on' : 'gt'});
-  else {
+  if (S.v === 0) { const H = hist({n, arr, pick:true, cls: j => j < k ? 'lt' : j === k ? 'on' : 'gt'});
+    if (n <= 14) for (let j = 0; j <= n; j++) if (arr[j] > 0.004) svg.append(T(H.x(j), H.y(arr[j])-10, fix(arr[j],3), 't mono m', 'middle', 10));
+    // Klammern unter der Achse für die drei Gruppen
+    if (k > 0) bracket(H.x(0)-H.w*0.4, H.x(k-1)+H.w*0.4, PL.B+28, `X < ${k}: ${fix(lt,4)}`, '--vb');
+    bracket(H.x(k)-H.w*0.4, H.x(k)+H.w*0.4, PL.B+28, `X = ${k}: ${fix(eq,4)}`, '--va', 36);
+    if (k < n) bracket(H.x(k+1)-H.w*0.4, H.x(n)+H.w*0.4, PL.B+28, `X > ${k}: ${fix(gt,4)}`, '--vr');
+  } else {
     const H = hist({n, arr:c, ymax:1, ylabel:'P(X ≤ k)', pick:true, cls: j => j === k ? 'on' : j === k-1 ? 'lt' : ''});
-    [[cF(c,k), `F(${k}) = ${fix(cF(c,k),4)}`], [cF(c,k-1), `F(${fmt(k-1,0)}) = ${fix(cF(c,k-1),4)}`]].forEach(([v,l]) => {
-      svg.append(el('line', {x1:PL.L, x2:H.x(k)+H.w, y1:H.y(v), y2:H.y(v), class:'bnd'})); svg.append(T(H.x(k)+H.w+6, H.y(v), l, 't mono ca', 'start', 12)); });
+    // Hilfslinien auf Höhe F(k) und F(k−1); Beschriftung links, wo die Säulen niedriger sind
+    [[cF(c,k), `F(${k}) = ${fix(cF(c,k),4)}`, -9], [cF(c,k-1), `F(${fmt(k-1,0)}) = ${fix(cF(c,k-1),4)}`, 11]].forEach(([v,l,dy]) => {
+      svg.append(el('line', {x1:PL.L, x2:H.x(k)+H.w*0.5, y1:H.y(v), y2:H.y(v), class:'bnd'})); svg.append(T(PL.L+8, H.y(v)+dy, l, 't mono ca', 'start', 12)); });
+    // Höhenunterschied zwischen Säule k−1 und k = P(X = k)
+    const xk = H.x(k) - H.w*0.45, ym = (H.y(cF(c,k)) + H.y(cF(c,k-1))) / 2;
+    svg.append(el('line', {x1:xk, x2:xk, y1:H.y(cF(c,k)), y2:H.y(cF(c,k-1)), style:'stroke:var(--va);stroke-width:3'}));
+    svg.append(T(xk-6, ym, `Unterschied = P(X = ${k}) = ${fix(eq,4)}`, 't mono ca', 'end', 12));
+    bracket(H.x(k)-H.w*0.4, H.x(k)+H.w*0.4, PL.B+28, `Säule ${k} = P(X ≤ ${k}) = F(${k})`, '--va');
   }
-  svg.append(T(450, 532, `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}`, 't m'));
+  svg.append(T(450, 20, `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)} · ${S.v === 0 ? 'Einzelwahrscheinlichkeiten' : 'kumulierte Wahrscheinlichkeiten'}`, 't m', 'middle', 13));
   const F = Fs(n,p);
   lines('k4eq', [
    `<span class="cb">P(X &lt; ${k})</span> = P(X ≤ ${fmt(k-1,0)}) = ${F}(${fmt(k-1,0)}) = <b>${fix(lt,4)}</b>`,
@@ -549,15 +584,16 @@ function evF(m,k,k2,F){ const km = fmt(k-1,0); return [`${F}(${k}) − ${F}(${km
 scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomialverteilung', hint:'Orange Säulen gehören zum Ereignis · Säule antippen wählt k',
  html: UI.q('Welche Trefferzahlen meint die Formulierung – und welcher F-Ausdruck passt dazu?') +
   UI.seg('k5pre', ['Klausur A: n = 18, p = 0,62','Klausur B: n = 25, p = 0,18','frei'], 0) +
+  `<div class="task" id="k5task"></div>` +
   UI.sl('k5n','n',1,100,1,18) + UI.sl('k5p','p',0.01,0.99,0.01,0.62) + UI.sl('k5k','k',0,18,1,7) + `<div id="k5k2w">${UI.sl('k5k2','k₂',1,18,1,11)}</div>` +
   `<div><div class="lbl">Formulierung in der Aufgabe</div>${UI.seg('k5m', MODES)}</div>` +
   UI.chk('k5wrong','Fehlerweg: Grenze falsch – „mindestens“ wie „mehr als“ behandeln (und umgekehrt)') +
   `<div class="eq col" id="k5eq"></div>` + UI.st('k5st') +
   `<p class="note"><b>Modellannahmen (Aufgabe 5a):</b> feste Anzahl n von Versuchen · jeder Versuch hat nur Treffer/Niete · gleiches p in jedem Versuch · Versuche unabhängig ⇒ X ist binomialverteilt.</p>`,
- init(){ const S = this; S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; S.m = 0; S.wrong = false;
-  onSeg('k5pre', v => { if (v === 0) { S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; } if (v === 1) { S.n = 25; S.p = 0.18; S.k = 3; S.k2 = 6; } S.upd(); });
-  onSl('k5n', v => { S.n = v; S.k = Math.min(S.k, v); S.k2 = Math.min(S.k2, v); setSeg('k5pre', 2); S.upd(); });
-  onSl('k5p', v => { S.p = v; setSeg('k5pre', 2); S.upd(); });
+ init(){ const S = this; S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; S.m = 0; S.wrong = false; S.pre = 0;
+  onSeg('k5pre', v => { S.pre = v; if (v === 0) { S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; } if (v === 1) { S.n = 25; S.p = 0.18; S.k = 3; S.k2 = 6; } S.upd(); });
+  onSl('k5n', v => { S.n = v; S.k = Math.min(S.k, v); S.k2 = Math.min(S.k2, v); S.pre = 2; setSeg('k5pre', 2); S.upd(); });
+  onSl('k5p', v => { S.p = v; S.pre = 2; setSeg('k5pre', 2); S.upd(); });
   onSl('k5k', v => { S.k = v; S.upd(); }); onSl('k5k2', v => { S.k2 = v; S.upd(); });
   onSeg('k5m', v => { S.m = v; S.upd(); });
   $('k5wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.upd(); });
@@ -569,11 +605,17 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
   const k = S.k, k2 = S.k2; setSl('k5n', n, 0); setSl('k5p', p, 2); setSl('k5k', k, 0); setSl('k5k2', k2, 0); $('k5k2w').hidden = m !== 5;
   const arr = binom(n,p), c = cdf(arr), [a,b] = evSet(m,n,k,k2), P = pRange(c,a,b);
   const aa = Math.max(0,a), bb = Math.min(n,b);
+  const story = S.pre === 0 ? `Eine Spielerin führt ${n} unabhängige Würfe aus und trifft jeweils mit Wahrscheinlichkeit ${fmt(p,2)}. X zählt die Treffer.`
+    : S.pre === 1 ? `Eine Maschine produziert ${n} Teile. Jedes Teil ist unabhängig mit Wahrscheinlichkeit ${fmt(p,2)} fehlerhaft. X zählt die fehlerhaften Teile, die hier als Treffer gelten.`
+    : `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}.`;
+  $('k5task').innerHTML = `<b>Aufgabe:</b> ${story} Bestimme die Wahrscheinlichkeit für „${evWords(m,k,k2)} Treffer“ (vier Dezimalstellen).`;
   clear();
-  hist({n, arr, pick:true, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
+  const H = hist({n, arr, pick:true, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
   const plain = aa > bb ? '0' : aa <= 0 ? `F(${bb})` : bb >= n ? `1 − F(${aa-1})` : `F(${bb}) − F(${aa-1})`;
   svg.append(T(450, PL.T-18, `P(${evWords(m,k,k2)} Treffer) = P(${aa} ≤ X ≤ ${bb}) = ${plain} = ${fix(P,4)}`, 't b'));
-  svg.append(T(450, 532, `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}`, 't m'));
+  if (aa <= bb) { bracket(H.x(aa)-H.w*0.4, H.x(bb)+H.w*0.4, PL.B+28, `„${evWords(m,k,k2)}“ = Trefferzahlen ${aa} bis ${bb} (${bb-aa+1} Säule${bb-aa ? 'n' : ''}, zusammen ${pct(P,2)})`, '--va');
+    if (bb - aa < 8) for (let j = aa; j <= bb; j++) if (arr[j] > 0.003) svg.append(T(H.x(j), H.y(arr[j])-10, fix(arr[j],4), 't mono ca', 'middle', 10)); }
+  if (S.wrong && m !== 0) { const [wa,wb] = wrongSet(m,n,k,k2); const ja = Math.max(0,wa), jb = Math.min(n,wb); if (ja <= jb) bracket(H.x(ja)-H.w*0.4, H.x(jb)+H.w*0.4, PL.T+38, `Fehlerweg: Säulen ${ja} bis ${jb}`, '--hit', 0, true); }
   const F = Fs(n,p), set = aa > bb ? '{ }' : bb - aa <= 6 ? '{' + range(aa,bb).join('; ') + '}' : `{${aa}; ${aa+1}; …; ${bb}}`;
   lines('k5eq', [
    `<span class="m">Ereignis:</span> „${evWords(m,k,k2)} Treffer“ ⇒ Trefferzahlen ${set}`,
@@ -595,13 +637,14 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
 scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialverteilung', hint:'Rote Linie: μ · gestrichelt: μ ± zσ · orange Säulen: nach innen gerundete Umgebung',
  html: UI.q('Welche Trefferzahlen liegen in der 1σ-, 2σ- und 3σ-Umgebung – und stimmen 68,3 % / 95,4 % / 99,7 % wirklich?') +
   UI.seg('k6pre', ['Klausur A: n = 100, p = 0,5','Klausur B: n = 120, p = 1/6','frei'], 0) +
+  `<div class="task" id="k6task"></div>` +
   UI.sl('k6n','n',10,200,1,100) + UI.sl('k6p','p',0.05,0.95,0.01,0.5) +
   `<div><div class="lbl">Umgebung</div>${UI.seg('k6z', ['1σ (≈ 68,3 %)','2σ (≈ 95,4 %)','3σ (≈ 99,7 %)'])}</div>` +
   `<div class="row">${UI.btn('k6all','Alle drei durchlaufen')}</div>` +
   `<div class="eq col" id="k6eq"></div>` + `<div class="tscroll"><table class="dist" id="k6tab"></table></div>` + UI.st('k6st'),
- init(){ const S = this; S.n = 100; S.p = 0.5; S.z = 1;
-  onSeg('k6pre', v => { if (v === 0) { S.n = 100; S.p = 0.5; } if (v === 1) { S.n = 120; S.p = 1/6; } S.upd(); });
-  onSl('k6n', v => { S.n = v; setSeg('k6pre', 2); S.upd(); }); onSl('k6p', v => { S.p = v; setSeg('k6pre', 2); S.upd(); });
+ init(){ const S = this; S.n = 100; S.p = 0.5; S.z = 1; S.pre = 0;
+  onSeg('k6pre', v => { S.pre = v; if (v === 0) { S.n = 100; S.p = 0.5; } if (v === 1) { S.n = 120; S.p = 1/6; } S.upd(); });
+  onSl('k6n', v => { S.n = v; S.pre = 2; setSeg('k6pre', 2); S.upd(); }); onSl('k6p', v => { S.p = v; S.pre = 2; setSeg('k6pre', 2); S.upd(); });
   onSeg('k6z', v => { S.z = v+1; S.upd(); });
   $('k6all').addEventListener('click', () => { stopAll(); [1,2,3].forEach((z,i) => later(1300*i, () => { S.z = z; setSeg('k6z', z-1); S.upd(); })); });
  },
@@ -612,10 +655,11 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
  },
  upd(){
   const S = this, {n,p,z} = S; setSl('k6n', n, 0); setSl('k6p', p, 2);
-  const {arr, mu, sd, R} = S.rows(), r = R[z-1];
+  const {arr, c, mu, sd, R} = S.rows(), r = R[z-1];
+  $('k6task').innerHTML = `<b>Aufgabe:</b> Z zählt die Treffer einer Binomialverteilung mit n = ${n} und p = ${S.pre === 1 ? '1/6' : fmt(p,2)}. Berechne μ und σ, bestimme die 1σ-, 2σ- und 3σ-Umgebung (nach innen auf ganze Trefferzahlen gerundet) und vergleiche die tatsächlichen Wahrscheinlichkeiten mit 68,3 %, 95,4 % und 99,7 %.`;
   clear();
   const H = hist({n, arr, cls: j => (j >= r.a && j <= r.b) ? 'on' : 'dim'});
-  drawBand(H, mu, sd, z, r.a, r.b, `${z}σ-Umgebung: ${r.a} ≤ X ≤ ${r.b} · P = ${pct(r.P,1)} (Faustregel ${pct(r.rule,1)})`);
+  drawBand(H, mu, sd, z, r.a, r.b, `${z}σ-Umgebung: ${r.a} ≤ X ≤ ${r.b} · tatsächlich ${pct(r.P,1)} · Faustregel ${pct(r.rule,1)}`, {inside:r.P, left:cF(c,r.a-1), right:1-cF(c,r.b)});
   lines('k6eq', [
    `μ = n · p = ${n} · ${fmt(p,3)} = <b>${fmt(mu,2)}</b>`,
    `σ = √(n · p · (1 − p)) = √(${n} · ${fmt(p,3)} · ${fmt(1-p,3)}) = √${fmt(n*p*(1-p),3)} = <b>${fmt(sd,3)}</b>`,
@@ -634,13 +678,19 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
 // Karte 7: Erwartete Schwankungen im Alltag
 // =====================================================================
 const CTX = [
- {name:'Gärtnerei (Klausur A)', n:100, p:0.4, X:'Anzahl der gekeimten Samen', s:(a,b,pc) => `In etwa ${pc} der Aussaaten keimen zwischen ${a} und ${b} der 100 Samen.`},
- {name:'Basketball (Klausur B)', n:80, p:0.8, X:'Anzahl der Treffer bei 80 Freiwürfen', s:(a,b,pc) => `In etwa ${pc} der Trainingseinheiten trifft der Spieler zwischen ${a} und ${b} der 80 Freiwürfe.`},
- {name:'Eigener Kontext', n:50, p:0.3, X:'Anzahl der Treffer', s:(a,b,pc) => `In etwa ${pc} der Durchgänge liegt die Trefferzahl zwischen ${a} und ${b}.`}
+ {name:'Gärtnerei (Klausur A)', n:100, p:0.4, X:'Anzahl der gekeimten Samen', unit:['Samen keimt','Samen keimen'], scene:(n,p) => `Gärtnerei: ${n} Samen, jeder keimt unabhängig mit p = ${fmt(p,2)}`,
+  task:(n,p,pc) => `Eine Gärtnerei sät ${n} Samen aus. Jeder Samen keimt unabhängig mit Wahrscheinlichkeit ${fmt(p,2)}. Die Gärtnerin möchte einen Bereich angeben, in dem die Zahl der gekeimten Samen ungefähr in ${pc} der Versuche liegt.`,
+  s:(a,b,pc) => `In etwa ${pc} der Aussaaten keimen zwischen ${a} und ${b} der 100 Samen.`},
+ {name:'Basketball (Klausur B)', n:80, p:0.8, X:'Anzahl der Treffer bei 80 Freiwürfen', unit:['Wurf trifft','Würfe treffen'], scene:(n,p) => `Basketball: ${n} Freiwürfe, jeder trifft unabhängig mit p = ${fmt(p,2)}`,
+  task:(n,p,pc) => `Ein Basketballspieler führt ${n} Freiwürfe aus. Jeder Wurf trifft unabhängig mit Wahrscheinlichkeit ${fmt(p,2)}. Die Trainerin möchte einen Bereich angeben, in dem die Trefferzahl ungefähr in ${pc} solcher Trainingseinheiten liegt.`,
+  s:(a,b,pc) => `In etwa ${pc} der Trainingseinheiten trifft der Spieler zwischen ${a} und ${b} der 80 Freiwürfe.`},
+ {name:'Eigener Kontext', n:50, p:0.3, X:'Anzahl der Treffer', unit:['Treffer','Treffer'], scene:(n,p) => `${n} Versuche, jeder trifft unabhängig mit p = ${fmt(p,2)}`,
+  task:(n,p,pc) => `Ein Zufallsversuch mit Trefferwahrscheinlichkeit ${fmt(p,2)} wird ${n}-mal unabhängig wiederholt. Gesucht ist ein Bereich, in dem die Trefferzahl ungefähr in ${pc} der Durchgänge liegt.`,
+  s:(a,b,pc) => `In etwa ${pc} der Durchgänge liegt die Trefferzahl zwischen ${a} und ${b}.`}
 ];
 scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialverteilung', hint:'Orange Säulen: der gesuchte Bereich · außerhalb: die seltenen Fälle',
  html: UI.q('In welchem Bereich liegt die Trefferzahl „fast immer“ – und wie formuliere ich das im Sachzusammenhang?') +
-  UI.seg('k7c', CTX.map(c => c.name)) + `<div id="k7own">${UI.sl('k7n','n',10,200,1,50)}${UI.sl('k7p','p',0.05,0.95,0.01,0.3)}</div>` +
+  UI.seg('k7c', CTX.map(c => c.name)) + `<div class="task" id="k7task"></div>` + `<div id="k7own">${UI.sl('k7n','n',10,200,1,50)}${UI.sl('k7p','p',0.05,0.95,0.01,0.3)}</div>` +
   `<div><div class="lbl">Gewünschte Sicherheit</div>${UI.seg('k7z', ['≈ 68,3 % (1σ)','≈ 95,4 % (2σ)','≈ 99,7 % (3σ)'], 1)}</div>` +
   `<div class="row">${UI.btn('k7play','Rezept Schritt für Schritt')}</div>` +
   `<ol class="steps" id="k7steps"></ol>` + UI.st('k7st'),
@@ -654,9 +704,17 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
   const S = this, C = CTX[S.c], n = S.c === 2 ? S.n : C.n, p = S.c === 2 ? S.p : C.p, z = S.z; $('k7own').hidden = S.c !== 2; setSl('k7n', S.n, 0); setSl('k7p', S.p, 2);
   const arr = binom(n,p), c = cdf(arr), mu = n*p, sd = Math.sqrt(n*p*(1-p)), lo = mu - z*sd, hi = mu + z*sd;
   const a = Math.max(0, Math.ceil(lo - 1e-9)), b = Math.min(n, Math.floor(hi + 1e-9)), P = pRange(c,a,b), rule = ['68,3 %','95,4 %','99,7 %'][z-1];
+  $('k7task').innerHTML = `<b>Aufgabe:</b> ${C.task(n,p,rule)}`;
   clear();
+  // Piktogramm: alle n Versuche, davon μ (gerundet) als erwartete Treffer
+  const T0 = PL.T; PL.T = 118;
+  const cols = Math.min(50, n), rows = Math.ceil(n/cols), cell = 9, gx = 450 - cols*cell/2, gy = 34, muR = Math.round(mu);
+  svg.append(T(450, 18, `${C.scene(n,p)} · erwartet μ = ${fmt(mu,1)}`, 't m', 'middle', 13));
+  for (let i = 0; i < n; i++) { const r = Math.floor(i/cols), col = i % cols; svg.append(el('circle', {cx:gx+col*cell+cell/2, cy:gy+r*cell+cell/2, r:3.6, class: i < muR ? 'ball R' : 'chip'})); }
+  svg.append(T(450, gy + rows*cell + 12, `orange: ${muR} ${C.unit[muR === 1 ? 0 : 1]} im Mittel · grau: ${n-muR} nicht · tatsächlich schwankt die Zahl um μ`, 't m', 'middle', 12));
   const H = hist({n, arr, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
-  drawBand(H, mu, sd, z, a, b, S.step >= 4 ? `Bereich ${a} ≤ X ≤ ${b} · innerhalb ${pct(P,2)} · außerhalb ${pct(1-P,2)}` : '');
+  drawBand(H, mu, sd, z, a, b, S.step >= 4 ? `Bereich ${a} ≤ X ≤ ${b} · innerhalb ${pct(P,2)} · außerhalb ${pct(1-P,2)}` : `Bereich wird in Schritt 4 bestimmt`, S.step >= 6 ? {inside:P, left:cF(c,a-1), right:1-cF(c,b)} : null);
+  PL.T = T0;
   const F = Fs(n,p);
   $('k7steps').innerHTML = [
    `Zufallsgröße: X = ${C.X}. X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)} (fest n, nur Treffer/Niete, gleiches p, unabhängig).`,
