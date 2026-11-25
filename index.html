@@ -229,6 +229,16 @@ function drawUrn(cx, cy, w, h, r, b, gone){
   svg.append(g);
 }
 
+// Ergebniskorb: die gezogenen Kugeln eines Pfads, z. B. ['R','B']
+function drawBasket(cx, cy, colors, on){
+  const g = el('g', {opacity: on ? 1 : 0.4});
+  g.append(el('path', {d:`M ${cx-30} ${cy-13} L ${cx-24} ${cy+12} Q ${cx} ${cy+19} ${cx+24} ${cy+12} L ${cx+30} ${cy-13}`, class:'urn'}));
+  g.append(el('line', {x1:cx-34, x2:cx+34, y1:cy-13, y2:cy-13, class:'urn'}));
+  g.append(el('path', {d:`M ${cx-14} ${cy-13} Q ${cx} ${cy-34} ${cx+14} ${cy-13}`, class:'urn', style:'fill:none'}));
+  colors.forEach((c,i) => g.append(el('circle', {cx:cx + (i - (colors.length-1)/2) * 19, cy:cy+1, r:8.5, class:'ball ' + c})));
+  svg.append(g);
+}
+
 // ---------- Ablauf ----------
 let timers = [];
 function stopAll(){ timers.forEach(clearTimeout); timers = []; }
@@ -307,7 +317,7 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
  },
  draw(P, onKeys){
   clear(); const S = this;
-  const root = [450,52], L1 = {R:[250,212], B:[650,212]}, L2 = {RR:[140,382], RB:[360,382], BR:[540,382], BB:[760,382]};
+  const root = [450,52], L1 = {R:[250,198], B:[650,198]}, L2 = {RR:[140,346], RB:[360,346], BR:[540,346], BB:[760,346]};
   const byKey = Object.fromEntries(P.map(q => [q.key, q]));
   const on1 = {R: onKeys.some(k => k[0] === 'R'), B: onKeys.some(k => k[0] === 'B')};
   const edge = (a,b,on) => svg.append(el('line', {x1:a[0], y1:a[1], x2:b[0], y2:b[1], class:'edge' + (on ? ' on' : ' dim')}));
@@ -319,20 +329,22 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
   for (const c of 'RB') node(L1[c], c, c);
   for (const k in L2) {
     const q = byKey[k], on = onKeys.includes(k); node(L2[k], k[1], k[1]);
-    const y0 = L2[k][1] + 38, cls = on ? 't mono b' : 't mono m';
-    svg.append(T(L2[k][0], y0, k, cls));
-    svg.append(T(L2[k][0], y0+22, `${q.f1[0]}/${q.f1[1]} · ${q.f2[0]}/${q.f2[1]}`, cls, 'middle', 13));
-    svg.append(T(L2[k][0], y0+44, `= ${frac(q.num,q.den)} ≈ ${fmt(q.num/q.den,3)}`, cls, 'middle', 13));
+    svg.append(el('line', {x1:L2[k][0], y1:L2[k][1]+20, x2:L2[k][0], y2:L2[k][1]+34, class:'edge' + (on ? ' on' : ' dim')}));
+    drawBasket(L2[k][0], L2[k][1]+62, [k[0], k[1]], on);
+    const y0 = L2[k][1] + 102, cls = on ? 't mono b' : 't mono m';
+    svg.append(T(L2[k][0], y0, `Ergebnis ${k}`, cls, 'middle', 13));
+    svg.append(T(L2[k][0], y0+20, `${q.f1[0]}/${q.f1[1]} · ${q.f2[0]}/${q.f2[1]}`, cls, 'middle', 13));
+    svg.append(T(L2[k][0], y0+40, `= ${frac(q.num,q.den)} ≈ ${fmt(q.num/q.den,3)}`, cls, 'middle', 13));
   }
   // Urnen: Ausgangsurne oben links, daneben die Urne nach dem 1. Zug (Platz der gezogenen Kugel gestrichelt)
   drawUrn(118, 62, 124, 78, S.r, S.b);
   svg.append(T(118, 118, `Urne: ${S.r} rote · ${S.b} blaue`, 't m', 'middle', 12));
   const back = S.mode === 1;
-  drawUrn(118, 224, 92, 60, back ? S.r : S.r-1, S.b, back ? null : 'R');
-  svg.append(T(118, 268, back ? 'R gezogen, zurückgelegt' : `nach R: ${S.r-1} rote · ${S.b} blaue`, 't m', 'middle', 11));
-  drawUrn(782, 224, 92, 60, S.r, back ? S.b : S.b-1, back ? null : 'B');
-  svg.append(T(782, 268, back ? 'B gezogen, zurückgelegt' : `nach B: ${S.r} rote · ${S.b-1} blaue`, 't m', 'middle', 11));
-  svg.append(T(36, 150, '1. Zug', 't m', 'start')); svg.append(T(36, 320, '2. Zug', 't m', 'start'));
+  drawUrn(118, 208, 92, 60, back ? S.r : S.r-1, S.b, back ? null : 'R');
+  svg.append(T(118, 252, back ? 'R gezogen, zurückgelegt' : `nach R: ${S.r-1} rote · ${S.b} blaue`, 't m', 'middle', 11));
+  drawUrn(782, 208, 92, 60, S.r, back ? S.b : S.b-1, back ? null : 'B');
+  svg.append(T(782, 252, back ? 'B gezogen, zurückgelegt' : `nach B: ${S.r} rote · ${S.b-1} blaue`, 't m', 'middle', 11));
+  svg.append(T(36, 140, '1. Zug', 't m', 'start')); svg.append(T(36, 290, '2. Zug', 't m', 'start'));
   svg.append(T(450, 530, `${S.mode === 0 ? 'Ohne Zurücklegen: nach dem 1. Zug fehlt eine Kugel' : 'Mit Zurücklegen: die Urne ist vor jedem Zug gleich'}${S.wrong && S.mode === 0 ? ' · FEHLERWEG: so wurde aber nicht gerechnet' : ''}`, 't m'));
  },
  play(){ const S = this; stopAll(); const sel = EV1[S.ev]; S.lit = 0; S.upd();
