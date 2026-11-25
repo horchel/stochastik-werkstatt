@@ -230,11 +230,11 @@ function drawUrn(cx, cy, w, h, r, b, gone){
 }
 
 // Ergebniskorb: die gezogenen Kugeln eines Pfads, z. B. ['R','B']
-function drawBasket(cx, cy, colors, on){
-  const g = el('g', {opacity: on ? 1 : 0.4});
-  g.append(el('path', {d:`M ${cx-30} ${cy-13} L ${cx-24} ${cy+12} Q ${cx} ${cy+19} ${cx+24} ${cy+12} L ${cx+30} ${cy-13}`, class:'urn'}));
-  g.append(el('line', {x1:cx-34, x2:cx+34, y1:cy-13, y2:cy-13, class:'urn'}));
-  g.append(el('path', {d:`M ${cx-14} ${cy-13} Q ${cx} ${cy-34} ${cx+14} ${cy-13}`, class:'urn', style:'fill:none'}));
+function drawBasket(cx, cy, colors, on, handle=true){
+  const g = el('g', {opacity: on ? 1 : 0.4}), hw = 10 + 10*colors.length;
+  g.append(el('path', {d:`M ${cx-hw} ${cy-13} L ${cx-hw+6} ${cy+12} Q ${cx} ${cy+19} ${cx+hw-6} ${cy+12} L ${cx+hw} ${cy-13}`, class:'urn'}));
+  g.append(el('line', {x1:cx-hw-4, x2:cx+hw+4, y1:cy-13, y2:cy-13, class:'urn'}));
+  if (handle) g.append(el('path', {d:`M ${cx-14} ${cy-13} Q ${cx} ${cy-34} ${cx+14} ${cy-13}`, class:'urn', style:'fill:none'}));
   colors.forEach((c,i) => g.append(el('circle', {cx:cx + (i - (colors.length-1)/2) * 19, cy:cy+1, r:8.5, class:'ball ' + c})));
   svg.append(g);
 }
@@ -326,7 +326,9 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
   for (const k in L2) { edge(L1[k[0]], L2[k], onKeys.includes(k)); fl(L1[k[0]], L2[k], byKey[k].f2, k[1] === 'R' ? -1 : 1); }
   const node = (pos,cls,label,r=20) => { svg.append(el('circle', {cx:pos[0], cy:pos[1], r, class:'nd ' + cls})); if (label) svg.append(T(pos[0], pos[1]+1, label, 't nl')); };
   node(root, 'root', '', 9); svg.append(T(450, 26, 'Start', 't m'));
-  for (const c of 'RB') node(L1[c], c, c);
+  for (const c of 'RB') { node(L1[c], c, c);
+    svg.append(el('line', {x1:L1[c][0], y1:L1[c][1]+20, x2:L1[c][0], y2:L1[c][1]+28, class:'edge' + (on1[c] ? ' on' : ' dim')}));
+    drawBasket(L1[c][0], L1[c][1]+42, [c], on1[c], false); }
   for (const k in L2) {
     const q = byKey[k], on = onKeys.includes(k); node(L2[k], k[1], k[1]);
     svg.append(el('line', {x1:L2[k][0], y1:L2[k][1]+20, x2:L2[k][0], y2:L2[k][1]+34, class:'edge' + (on ? ' on' : ' dim')}));
