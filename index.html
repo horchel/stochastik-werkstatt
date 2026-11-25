@@ -301,6 +301,9 @@ const UI = {
 };
 function onSeg(id, cb){ $(id).addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; stopAll(); setSeg(id, +b.dataset.v); cb(+b.dataset.v); }); }
 function setSeg(id, i){ [...$(id).children].forEach(x => x.setAttribute('aria-pressed', +x.dataset.v === i)); }
+const rnd = n => Math.floor(Math.random() * n);
+// Wahlfeld „Aufgabe aus Probeklausur“ A–D plus Zufallsknopf, auf jeder Karte gleich
+const klausurUI = id => `<div><div class="lbl">Aufgabe aus Probeklausur</div><div class="row" style="align-items:center">${UI.seg(id, ['A','B','C','D'], -1)}${UI.btn(id+'R','Zufällig',true)}</div></div>`;
 function onSl(id, cb){ $(id).addEventListener('input', e => { stopAll(); cb(+e.target.value); }); }
 function setSl(id, v, d=1){ $(id).value = v; $(id+'O').textContent = fmt(v,d); }
 function stat(id, html, cls=''){ const e = $(id); e.className = 'status ' + cls; e.innerHTML = html; }
@@ -377,10 +380,11 @@ function scene(id, def){ def.id = id; scenes[id] = def; order.push(id); }
 // =====================================================================
 // Karte 1: Baumdiagramm & Pfadregeln
 // =====================================================================
-const EV1 = [['RR'],['RB','BR'],['RR','RB','BR'],['RR','BB']], EVN = ['zwei rote','genau eine rote','mindestens eine rote','zwei gleiche'];
+const EV1 = [['RR'],['RB','BR'],['RR','RB','BR'],['RR','BB'],['BB']], EVN = ['zwei rote','genau eine rote','mindestens eine rote','zwei gleiche','zwei blaue'];
+const K1P = [{r:3,b:2,mode:0,ev:0},{r:4,b:2,mode:0,ev:1},{r:5,b:3,mode:0,ev:4},{r:2,b:4,mode:1,ev:0}];
 scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint:'Orange Pfade gehören zum gewählten Ereignis',
  html: UI.q('Wie wahrscheinlich ist ein Ergebnis aus zwei Zügen – und warum ändern sich die Brüche im zweiten Zug?') +
-  `<div class="task" id="k1task"></div>` +
+  klausurUI('k1K') + `<div class="task" id="k1task"></div>` +
   UI.sl('k1r','rote Kugeln in der Urne',1,6,1,3) + UI.sl('k1b','blaue Kugeln in der Urne',1,6,1,2) +
   UI.seg('k1mode',['ohne Zurücklegen','mit Zurücklegen']) +
   `<div><div class="lbl">Ereignis</div>${UI.seg('k1ev',EVN)}</div>` +
@@ -389,6 +393,7 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
   `<div class="eq col" id="k1eq"></div>` + UI.st('k1st') + UI.leg([['--va','rot (R)'],['--vb','blau (B)']]),
  init(){ const S = this; S.r = 3; S.b = 2; S.mode = 0; S.ev = 0; S.wrong = false; S.lit = null;
   onSl('k1r', v => { S.r = v; S.lit = null; S.upd(); }); onSl('k1b', v => { S.b = v; S.lit = null; S.upd(); });
+  onSeg('k1K', i => S.preset(K1P[i])); $('k1KR').addEventListener('click', () => S.preset({r:1+rnd(6), b:1+rnd(6), mode:rnd(2), ev:rnd(EVN.length)}));
   onSeg('k1mode', v => { S.mode = v; S.lit = null; S.upd(); }); onSeg('k1ev', v => { S.ev = v; S.lit = null; S.upd(); });
   $('k1wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.lit = null; S.upd(); });
   $('k1play').addEventListener('click', () => S.play());
@@ -403,7 +408,7 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
   return out;
  },
  upd(){
-  const S = this, N = S.r + S.b; setSl('k1r', S.r, 0); setSl('k1b', S.b, 0);
+  const S = this, N = S.r + S.b; setSl('k1r', S.r, 0); setSl('k1b', S.b, 0); setSeg('k1K', K1P.findIndex(q => q.r === S.r && q.b === S.b && q.mode === S.mode && q.ev === S.ev));
   $('k1wrongW').hidden = S.mode === 1;
   $('k1task').innerHTML = taskHTML('k1task', `In einer Urne liegen <b class="ca">${S.r} rote</b> und <b class="cb">${S.b} blaue</b> Kugeln. Zwei Kugeln werden nacheinander zufällig <b>${S.mode === 0 ? 'ohne' : 'mit'} Zurücklegen</b> gezogen. Berechne die Wahrscheinlichkeit für „${EVN[S.ev]}“.`);
   const P = S.paths(S.wrong && S.mode === 0), sel = EV1[S.ev], den = P[0].den;
@@ -476,6 +481,14 @@ const GAMES = [
   task: e => `In einer Trommel liegen acht gleich wahrscheinliche Lose. Vier sind Nieten ohne Auszahlung, drei bringen jeweils 4 € und eines bringt 12 €. Der Einsatz für ein Los beträgt ${eur(e)}.`,
   items: [...Array(4).fill({label:'Niete', pay:0}), ...Array(3).fill({label:'4 €', pay:4}), {label:'12 €', pay:12}],
   out:[{l:'Niete (4 Lose)', n:4, d:8, pay:0}, {l:'3 Lose', n:3, d:8, pay:4}, {l:'1 Los', n:1, d:8, pay:12}]},
+ {name:'Glücksrad (Klausur C)', e:2, kind:'wheel', scene:'Glücksrad mit vier gleich großen Feldern · jedes Feld 1/4',
+  task: e => `Ein Glücksrad hat vier gleich große Felder. Bei Feld 1 und Feld 2 gibt es keine Auszahlung, bei Feld 3 werden 2 € ausgezahlt, bei Feld 4 werden 5 € ausgezahlt. Der Einsatz beträgt ${eur(e)}.`,
+  items: [1,2,3,4].map(f => ({field:f, pay: f <= 2 ? 0 : f === 3 ? 2 : 5})),
+  out:[{l:'Feld 1 oder 2', n:2, d:4, pay:0}, {l:'Feld 3', n:1, d:4, pay:2}, {l:'Feld 4', n:1, d:4, pay:5}]},
+ {name:'Lose (Klausur D)', e:2, kind:'ticket', scene:'Lostrommel mit zehn Losen · jedes Los 1/10',
+  task: e => `In einer Trommel liegen zehn gleich wahrscheinliche Lose. Sechs sind Nieten ohne Auszahlung, drei bringen jeweils 3 € und eines bringt 10 €. Der Einsatz für ein Los beträgt ${eur(e)}.`,
+  items: [...Array(6).fill({label:'Niete', pay:0}), ...Array(3).fill({label:'3 €', pay:3}), {label:'10 €', pay:10}],
+  out:[{l:'Niete (6 Lose)', n:6, d:10, pay:0}, {l:'3 Lose', n:3, d:10, pay:3}, {l:'1 Los', n:1, d:10, pay:10}]},
  {name:'Zwei Münzen', e:2, kind:'coins', scene:'Zwei Münzen, einmal geworfen · jede Kombination 1/4',
   task: e => `Zwei Münzen werden gleichzeitig geworfen. Zeigt keine Münze Kopf, gibt es nichts; bei einmal Kopf werden 2 € ausgezahlt, bei zweimal Kopf 5 €. Der Einsatz beträgt ${eur(e)}.`,
   items: ['KK','KZ','ZK','ZZ'].map(s => ({combo:s, pay: [0,2,5][(s.match(/K/g)||[]).length]})),
@@ -485,7 +498,11 @@ const PIPS = {1:[[0,0]], 2:[[-1,-1],[1,1]], 3:[[-1,-1],[0,0],[1,1]], 4:[[-1,-1],
 // Ein Ergebnis des Spielgeräts als Symbol: Würfelseite, Los oder Münzpaar
 function drawItem(kind, it, x, y, col){
   const g = el('g');
-  if (kind === 'die') {
+  if (kind === 'wheel') {
+    g.append(el('circle', {cx:x, cy:y, r:22, class:'urn', style:`stroke:var(${col});stroke-width:2.5`}));
+    g.append(el('path', {d:`M ${x} ${y} L ${x} ${y-22} A 22 22 0 0 1 ${x+22} ${y} Z`, style:`fill:var(${col});opacity:.35`}));
+    g.append(T(x, y+1, String(it.field), 't b', 'middle', 16, col));
+  } else if (kind === 'die') {
     g.append(el('rect', {x:x-22, y:y-22, width:44, height:44, rx:8, class:'urn', style:`stroke:var(${col});stroke-width:2.5`}));
     PIPS[it.face].forEach(([a,b]) => g.append(el('circle', {cx:x+a*12, cy:y+b*12, r:4.2, style:`fill:var(${col})`})));
   } else if (kind === 'ticket') {
@@ -501,12 +518,14 @@ function drawItem(kind, it, x, y, col){
 }
 scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen', hint:'Rote Linie: E(X) · orange Klammer: μ ± σ',
  html: UI.q('Lohnt sich das Spiel auf lange Sicht – und wie stark schwankt der Gewinn um den Erwartungswert?') +
-  UI.seg('k2g', GAMES.map(g => g.name)) + `<div class="task" id="k2task"></div>` + UI.sl('k2e','Einsatz pro Spiel in €',0,10,0.5,3) +
+  klausurUI('k2K') + UI.seg('k2g', GAMES.map(g => g.name)) + `<div class="task" id="k2task"></div>` + UI.sl('k2e','Einsatz pro Spiel in €',0,10,0.5,3) +
   `<div class="tscroll"><table class="dist" id="k2tab"></table></div>` +
   `<div class="row">${UI.btn('k2next','Weiter')}${UI.btn('k2fair','Fairen Einsatz finden',true)}</div>` +
   `<div class="eq col" id="k2eq"></div>` + UI.st('k2st'),
  init(){ const S = this; S.g = 0; S.e = 3; S.step = 1; S.fair = false;
   onSeg('k2g', v => { S.g = v; S.e = GAMES[v].e; S.step = 1; S.fair = false; S.upd(); });
+  onSeg('k2K', i => { S.g = i; S.e = GAMES[i].e; S.step = 1; S.fair = false; setSeg('k2g', i); S.upd(); });
+  $('k2KR').addEventListener('click', () => { S.g = rnd(GAMES.length); S.e = (1 + rnd(10)) * 0.5; S.step = 1; S.fair = false; setSeg('k2g', S.g); S.upd(); });
   onSl('k2e', v => { S.e = v; S.fair = false; S.upd(); });
   $('k2next').addEventListener('click', () => { S.step = S.step >= 3 ? 1 : S.step + 1; S.fair = false; S.upd(); });
   $('k2fair').addEventListener('click', () => { const G = GAMES[S.g]; S.e = sum(G.out.map(o => o.pay * o.n / o.d)); S.step = Math.max(S.step, 2); S.fair = true; S.upd(); });
@@ -514,7 +533,7 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
  show(){ this.upd(); },
  dist(){ return GAMES[this.g].out.map(o => ({k: o.pay - this.e, p: o.n/o.d, f:[o.n,o.d], l:o.l, pay:o.pay})); },
  upd(){
-  const S = this, D = S.dist(); setSl('k2e', S.e, 2);
+  const S = this, D = S.dist(); setSl('k2e', S.e, 2); setSeg('k2K', (S.g < 4 && Math.abs(S.e - GAMES[S.g].e) < 1e-9) ? S.g : -1);
   $('k2task').innerHTML = taskHTML('k2task', `${GAMES[S.g].task(S.e)} Die Zufallsgröße X bezeichnet den Nettogewinn in Euro.`);
   const mu = sum(D.map(d => d.k*d.p)), va = sum(D.map(d => (d.k-mu)**2 * d.p)), sd = Math.sqrt(va);
   S.draw(D, mu, sd);
@@ -562,20 +581,21 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
 // =====================================================================
 scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint:'Jede Zeile ist ein Pfad; eine Spalte sammelt alle Pfade mit gleicher Trefferzahl',
  html: UI.q('Wie viele Pfade haben genau k Treffer, und was ist jeder einzelne Pfad wert?') +
-  `<div class="task" id="k3task"></div>` +
+  klausurUI('k3K') + `<div class="task" id="k3task"></div>` +
   UI.sl('k3n','n = Anzahl der Versuche',1,6,1,3) + UI.sl('k3p','p = Trefferwahrscheinlichkeit',0.05,0.95,0.05,0.5) + UI.sl('k3k','k = Anzahl der Treffer',0,3,1,2) +
   UI.chk('k3wrong','Fehlerweg: Binomialkoeffizient vergessen (nur einen Pfad zählen)') +
   `<div class="row">${UI.btn('k3play','P(X ≤ k) Spalte für Spalte aufsummieren')}</div>` +
   `<div class="eq col" id="k3eq"></div>` + UI.st('k3st') + UI.leg([['--va','Treffer'],['--line','Niete']]),
  init(){ const S = this; S.n = 3; S.p = 0.5; S.k = 2; S.wrong = false; S.lit = null;
   onSl('k3n', v => { S.n = v; $('k3k').max = v; if (S.k > v) S.k = v; S.lit = null; S.upd(); });
+  onSeg('k3K', i => S.preset(K3P[i])); $('k3KR').addEventListener('click', () => { const n = 2 + rnd(5); S.preset({n, p:[0.25,0.3,0.4,0.5,0.6,0.75][rnd(6)], k:rnd(n+1)}); });
   onSl('k3p', v => { S.p = v; S.lit = null; S.upd(); }); onSl('k3k', v => { S.k = v; S.lit = null; S.upd(); });
   $('k3wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.upd(); });
   $('k3play').addEventListener('click', () => S.play());
  },
  show(){ this.lit = null; this.upd(); },
  upd(){
-  const S = this, {n,p,k} = S, q = 1-p; setSl('k3n', n, 0); setSl('k3p', p, 2); setSl('k3k', k, 0);
+  const S = this, {n,p,k} = S, q = 1-p; setSl('k3n', n, 0); setSl('k3p', p, 2); setSl('k3k', k, 0); setSeg('k3K', K3P.findIndex(o => o.n === n && Math.abs(o.p - p) < 1e-9 && o.k === k));
   $('k3task').innerHTML = taskHTML('k3task', `X zählt die Treffer einer Bernoulli-Kette mit n = ${n} und p = ${fmt(p,2)}. Berechne den Binomialkoeffizienten für genau ${k} Treffer, P(X = ${k}) mit der Bernoulli-Formel und P(X ≤ ${k}) als Summe von Einzelwahrscheinlichkeiten.`);
   const arr = binom(n,p), c = cdf(arr), C = choose(n,k), one = Math.pow(p,k) * Math.pow(q,n-k);
   S.draw(arr, c);
@@ -623,7 +643,7 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
 // =====================================================================
 scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilung', hint:'Säule antippen wählt k',
  html: UI.q('Wie lese ich P(X &lt; k), P(X = k) und P(X &gt; k) aus einem Säulendiagramm oder einer Tabelle ab?') +
-  `<div class="task" id="k4task"></div>` +
+  klausurUI('k4K') + `<div class="task" id="k4task"></div>` +
   UI.seg('k4v', ['Einzelwahrscheinlichkeiten P(X = k)','Kumuliert P(X ≤ k)']) +
   UI.sl('k4n','n',1,30,1,8) + UI.sl('k4p','p',0.05,0.95,0.05,0.6) + UI.sl('k4k','k',0,8,1,4) +
   `<div class="eq col" id="k4eq"></div>` +
@@ -631,12 +651,13 @@ scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilu
   UI.st('k4st') + UI.leg([['--vb','X &lt; k'],['--va','X = k'],['--vr','X &gt; k']]),
  init(){ const S = this; S.v = 0; S.n = 8; S.p = 0.6; S.k = 4;
   onSeg('k4v', v => { S.v = v; S.upd(); });
+  onSeg('k4K', i => S.preset(K4P[i])); $('k4KR').addEventListener('click', () => { const n = 4 + rnd(17); S.preset({n, p:(2 + rnd(16)) * 0.05, k:rnd(n+1)}); });
   onSl('k4n', v => { S.n = v; $('k4k').max = v; if (S.k > v) S.k = v; S.upd(); }); onSl('k4p', v => { S.p = v; S.upd(); }); onSl('k4k', v => { S.k = v; S.upd(); });
  },
  show(){ this.upd(); },
  pick(k){ stopAll(); this.k = k; this.upd(); },
  upd(){
-  const S = this, {n,p,k} = S; setSl('k4n', n, 0); setSl('k4p', p, 2); setSl('k4k', k, 0);
+  const S = this, {n,p,k} = S; setSl('k4n', n, 0); setSl('k4p', p, 2); setSl('k4k', k, 0); setSeg('k4K', K4P.findIndex(o => o.n === n && Math.abs(o.p - p) < 1e-9 && o.k === k));
   const arr = binom(n,p), c = cdf(arr), lt = cF(c,k-1), eq = arr[k], gt = 1 - cF(c,k);
   $('k4task').innerHTML = taskHTML('k4task', `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}. Jede Säule zeigt ${S.v === 0 ? 'P(X = k)' : 'P(X ≤ k)'}. Lies P(X &lt; ${k}), P(X = ${k}) und P(X &gt; ${k}) näherungsweise ab und gib für jeden Wert den passenden F-Ausdruck an.`);
   clear();
@@ -689,8 +710,7 @@ const ineq = (m,k,k2,html) => { const lt = html ? '&lt;' : '<', gt = html ? '&gt
 function evF(m,k,k2,F){ const km = fmt(k-1,0); return [`${F}(${k}) − ${F}(${km})`, `1 − ${F}(${km})`, `${F}(${k})`, `1 − ${F}(${k})`, `${F}(${km})`, `${F}(${k2-1}) − ${F}(${km})`][m]; }
 scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomialverteilung', hint:'Orange Säulen gehören zum Ereignis · Säule antippen wählt k',
  html: UI.q('Welche Trefferzahlen meint die Formulierung – und welcher F-Ausdruck passt dazu?') +
-  UI.seg('k5pre', ['Klausur A: n = 18, p = 0,62','Klausur B: n = 25, p = 0,18','frei'], 0) +
-  `<div class="task" id="k5task"></div>` +
+  klausurUI('k5K') + `<div class="task" id="k5task"></div>` +
   UI.sl('k5n','n',1,100,1,18) + UI.sl('k5p','p',0.01,0.99,0.01,0.62) + UI.sl('k5k','k',0,18,1,7) + `<div id="k5k2w">${UI.sl('k5k2','k₂',1,18,1,11)}</div>` +
   `<div><div class="lbl">Formulierung in der Aufgabe</div>${UI.seg('k5m', MODES)}</div>` +
   UI.chk('k5wrong','Fehlerweg: Grenze falsch – „mindestens“ wie „mehr als“ behandeln (und umgekehrt)') +
@@ -698,9 +718,10 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
   `<div><div class="lbl">Übersetzungstabelle (aktuelle Werte)</div><div class="tscroll"><table class="dist wrap1" id="k5tab"></table></div></div>` + UI.st('k5st') +
   `<p class="note"><b>Modellannahmen (Aufgabe 5a):</b> feste Anzahl n von Versuchen · jeder Versuch hat nur Treffer/Niete · gleiches p in jedem Versuch · Versuche unabhängig ⇒ X ist binomialverteilt.</p>`,
  init(){ const S = this; S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; S.m = 0; S.wrong = false; S.pre = 0;
-  onSeg('k5pre', v => { S.pre = v; if (v === 0) { S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; } if (v === 1) { S.n = 25; S.p = 0.18; S.k = 3; S.k2 = 6; } S.upd(); });
-  onSl('k5n', v => { S.n = v; S.k = Math.min(S.k, v); S.k2 = Math.min(S.k2, v); S.pre = 2; setSeg('k5pre', 2); S.upd(); });
-  onSl('k5p', v => { S.p = v; S.pre = 2; setSeg('k5pre', 2); S.upd(); });
+  onSeg('k5K', i => S.preset(Object.assign({pre:i}, K5P[i])));
+  $('k5KR').addEventListener('click', () => { const n = 5 + rnd(36), k = rnd(n+1); S.preset({n, p:(5 + rnd(90)) / 100, k, k2:Math.min(n, k + 1 + rnd(5)), m:rnd(6), pre:-1}); });
+  onSl('k5n', v => { S.n = v; S.k = Math.min(S.k, v); S.k2 = Math.min(S.k2, v); S.pre = -1; S.upd(); });
+  onSl('k5p', v => { S.p = v; S.pre = -1; S.upd(); });
   onSl('k5k', v => { S.k = v; S.upd(); }); onSl('k5k2', v => { S.k2 = v; S.upd(); });
   onSeg('k5m', v => { S.m = v; S.upd(); });
   $('k5wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.upd(); });
@@ -712,8 +733,11 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
   const k = S.k, k2 = S.k2; setSl('k5n', n, 0); setSl('k5p', p, 2); setSl('k5k', k, 0); setSl('k5k2', k2, 0); $('k5k2w').hidden = m !== 5;
   const arr = binom(n,p), c = cdf(arr), [a,b] = evSet(m,n,k,k2), P = pRange(c,a,b);
   const aa = Math.max(0,a), bb = Math.min(n,b);
+  setSeg('k5K', S.pre);
   const story = S.pre === 0 ? `Eine Spielerin führt ${n} unabhängige Würfe aus und trifft jeweils mit Wahrscheinlichkeit ${fmt(p,2)}. X zählt die Treffer.`
     : S.pre === 1 ? `Eine Maschine produziert ${n} Teile. Jedes Teil ist unabhängig mit Wahrscheinlichkeit ${fmt(p,2)} fehlerhaft. X zählt die fehlerhaften Teile, die hier als Treffer gelten.`
+    : S.pre === 2 ? `Ein Online-Shop verschickt an einem Tag ${n} Pakete. Jedes Paket kommt unabhängig mit Wahrscheinlichkeit ${fmt(p,2)} beschädigt an. X zählt die beschädigten Pakete, die hier als Treffer gelten.`
+    : S.pre === 3 ? `Eine Biathletin gibt ${n} Schüsse ab und trifft jeweils mit Wahrscheinlichkeit ${fmt(p,2)}. X zählt die Treffer.`
     : `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}.`;
   $('k5task').innerHTML = taskHTML('k5task', `${story} Bestimme die Wahrscheinlichkeit für „${evWords(m,k,k2)} Treffer“ (vier Dezimalstellen).`);
   clear();
@@ -749,15 +773,15 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
 // =====================================================================
 scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialverteilung', hint:'Rote Linie: μ · gestrichelt: μ ± zσ · orange Säulen: nach innen gerundete Umgebung',
  html: UI.q('Welche Trefferzahlen liegen in der 1σ-, 2σ- und 3σ-Umgebung – und stimmen 68,3 % / 95,4 % / 99,7 % wirklich?') +
-  UI.seg('k6pre', ['Klausur A: n = 100, p = 0,5','Klausur B: n = 120, p = 1/6','frei'], 0) +
-  `<div class="task" id="k6task"></div>` +
+  klausurUI('k6K') + `<div class="task" id="k6task"></div>` +
   UI.sl('k6n','n',10,200,1,100) + UI.sl('k6p','p',0.05,0.95,0.01,0.5) +
   `<div><div class="lbl">Umgebung</div>${UI.seg('k6z', ['1σ (≈ 68,3 %)','2σ (≈ 95,4 %)','3σ (≈ 99,7 %)'])}</div>` +
   `<div class="row">${UI.btn('k6all','Alle drei durchlaufen')}</div>` +
   `<div class="eq col" id="k6eq"></div>` + `<div class="tscroll"><table class="dist" id="k6tab"></table></div>` + UI.st('k6st'),
  init(){ const S = this; S.n = 100; S.p = 0.5; S.z = 1; S.pre = 0;
-  onSeg('k6pre', v => { S.pre = v; if (v === 0) { S.n = 100; S.p = 0.5; } if (v === 1) { S.n = 120; S.p = 1/6; } S.upd(); });
-  onSl('k6n', v => { S.n = v; S.pre = 2; setSeg('k6pre', 2); S.upd(); }); onSl('k6p', v => { S.p = v; S.pre = 2; setSeg('k6pre', 2); S.upd(); });
+  onSeg('k6K', i => S.preset(Object.assign({pre:i}, K6P[i])));
+  $('k6KR').addEventListener('click', () => S.preset({n:10 + rnd(191), p:(5 + rnd(91)) / 100, z:1 + rnd(3), pre:-1}));
+  onSl('k6n', v => { S.n = v; S.pre = -1; S.upd(); }); onSl('k6p', v => { S.p = v; S.pre = -1; S.upd(); });
   onSeg('k6z', v => { S.z = v+1; S.upd(); });
   $('k6all').addEventListener('click', () => { stopAll(); [1,2,3].forEach((z,i) => later(1300*i, () => { S.z = z; setSeg('k6z', z-1); S.upd(); })); });
  },
@@ -769,6 +793,7 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
  upd(){
   const S = this, {n,p,z} = S; setSl('k6n', n, 0); setSl('k6p', p, 2);
   const {arr, c, mu, sd, R} = S.rows(), r = R[z-1];
+  setSeg('k6K', S.pre);
   $('k6task').innerHTML = taskHTML('k6task', `Z zählt die Treffer einer Binomialverteilung mit n = ${n} und p = ${S.pre === 1 ? '1/6' : fmt(p,2)}. Berechne μ und σ, bestimme die 1σ-, 2σ- und 3σ-Umgebung (nach innen auf ganze Trefferzahlen gerundet) und vergleiche die tatsächlichen Wahrscheinlichkeiten mit 68,3 %, 95,4 % und 99,7 %.`);
   clear();
   const H = hist({n, arr, cls: j => (j >= r.a && j <= r.b) ? 'on' : 'dim'});
@@ -800,6 +825,12 @@ const CTX = [
  {name:'Basketball (Klausur B)', n:80, p:0.8, X:'Anzahl der Treffer bei 80 Freiwürfen', unit:['Wurf trifft','Würfe treffen'], scene:(n,p) => `Basketball: ${n} Freiwürfe, jeder trifft unabhängig mit p = ${fmt(p,2)}`,
   task:(n,p,pc) => `Ein Basketballspieler führt ${n} Freiwürfe aus. Jeder Wurf trifft unabhängig mit Wahrscheinlichkeit ${fmt(p,2)}. Die Trainerin möchte einen Bereich angeben, in dem die Trefferzahl ungefähr in ${pc} solcher Trainingseinheiten liegt.`,
   s:(a,b,pc) => `In etwa ${pc} der Trainingseinheiten trifft der Spieler zwischen ${a} und ${b} der 80 Freiwürfe.`},
+ {name:'LED-Lampen (Klausur C)', n:200, p:0.9, z:3, X:'Anzahl der Lampen, die den Test bestehen', unit:['Lampe besteht','Lampen bestehen'], scene:(n,p) => `LED-Lampen: ${n} geprüft, jede besteht den Test unabhängig mit p = ${fmt(p,2)}`,
+  task:(n,p,pc) => `Eine Firma prüft ${n} LED-Lampen aus der Produktion. Jede Lampe besteht den Qualitätstest unabhängig mit Wahrscheinlichkeit ${fmt(p,2)}. Die Qualitätsleiterin möchte einen Bereich angeben, in dem die Zahl der bestandenen Lampen ungefähr in ${pc} der Prüfungen liegt.`,
+  s:(a,b,pc) => `In etwa ${pc} der Prüfungen bestehen zwischen ${a} und ${b} der 200 Lampen den Qualitätstest.`},
+ {name:'Callcenter (Klausur D)', n:90, p:0.3, z:1, X:'Anzahl der Vertragsabschlüsse bei 90 Anrufen', unit:['Anruf führt zum Abschluss','Anrufe führen zum Abschluss'], scene:(n,p) => `Callcenter: ${n} Anrufe, jeder führt unabhängig mit p = ${fmt(p,2)} zum Abschluss`,
+  task:(n,p,pc) => `In einem Callcenter führt jeder Anruf unabhängig mit Wahrscheinlichkeit ${fmt(p,2)} zu einem Vertragsabschluss. An einem Tag werden ${n} Anrufe geführt. Die Teamleiterin möchte einen Bereich angeben, in dem die Zahl der Abschlüsse ungefähr in ${pc} der Tage liegt.`,
+  s:(a,b,pc) => `An etwa ${pc} der Tage kommen zwischen ${a} und ${b} Vertragsabschlüsse bei 90 Anrufen zustande.`},
  {name:'Eigener Kontext', n:50, p:0.3, X:'Anzahl der Treffer', unit:['Treffer','Treffer'], scene:(n,p) => `${n} Versuche, jeder trifft unabhängig mit p = ${fmt(p,2)}`,
   task:(n,p,pc) => `Ein Zufallsversuch mit Trefferwahrscheinlichkeit ${fmt(p,2)} wird ${n}-mal unabhängig wiederholt. Gesucht ist ein Bereich, in dem die Trefferzahl ungefähr in ${pc} der Durchgänge liegt.`,
   s:(a,b,pc) => `In etwa ${pc} der Durchgänge liegt die Trefferzahl zwischen ${a} und ${b}.`}
@@ -808,16 +839,17 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
  html: UI.q('In welchem Bereich liegt die Trefferzahl „fast immer“ – und wie formuliere ich das im Sachzusammenhang?') +
   UI.seg('k7c', CTX.map(c => c.name)) + `<div class="task" id="k7task"></div>` + `<div id="k7own">${UI.sl('k7n','n',10,200,1,50)}${UI.sl('k7p','p',0.05,0.95,0.01,0.3)}</div>` +
   `<div><div class="lbl">Gewünschte Sicherheit</div>${UI.seg('k7z', ['≈ 68,3 % (1σ)','≈ 95,4 % (2σ)','≈ 99,7 % (3σ)'], 1)}</div>` +
-  `<div class="row">${UI.btn('k7play','Rezept Schritt für Schritt')}</div>` +
+  `<div class="row">${UI.btn('k7play','Rezept Schritt für Schritt')}${UI.btn('k7rand','Zufällige Aufgabe',true)}</div>` +
   `<ol class="steps" id="k7steps"></ol>` + UI.st('k7st'),
  init(){ const S = this; S.c = 0; S.n = 50; S.p = 0.3; S.z = 2; S.step = 6;
-  onSeg('k7c', v => { S.c = v; S.step = 6; S.upd(); }); onSl('k7n', v => { S.n = v; S.upd(); }); onSl('k7p', v => { S.p = v; S.upd(); });
+  onSeg('k7c', v => { S.c = v; if (CTX[v].z) { S.z = CTX[v].z; setSeg('k7z', S.z-1); } S.step = 6; S.upd(); }); onSl('k7n', v => { S.n = v; S.upd(); }); onSl('k7p', v => { S.p = v; S.upd(); });
+  $('k7rand').addEventListener('click', () => { S.c = CTX.length-1; S.n = 10 + rnd(191); S.p = (5 + rnd(91)) / 100; S.z = 1 + rnd(3); setSeg('k7c', S.c); setSeg('k7z', S.z-1); S.step = 6; S.upd(); });
   onSeg('k7z', v => { S.z = v+1; S.step = 6; S.upd(); });
   $('k7play').addEventListener('click', () => { stopAll(); S.step = 0; S.upd(); for (let i = 1; i <= 6; i++) later(1000*i, () => { S.step = i; S.upd(); }); });
  },
  show(){ this.step = 6; this.upd(); },
  upd(){
-  const S = this, C = CTX[S.c], n = S.c === 2 ? S.n : C.n, p = S.c === 2 ? S.p : C.p, z = S.z; $('k7own').hidden = S.c !== 2; setSl('k7n', S.n, 0); setSl('k7p', S.p, 2);
+  const S = this, C = CTX[S.c], own = S.c === CTX.length-1, n = own ? S.n : C.n, p = own ? S.p : C.p, z = S.z; $('k7own').hidden = !own; setSl('k7n', S.n, 0); setSl('k7p', S.p, 2);
   const arr = binom(n,p), c = cdf(arr), mu = n*p, sd = Math.sqrt(n*p*(1-p)), lo = mu - z*sd, hi = mu + z*sd;
   const a = Math.max(0, Math.ceil(lo - 1e-9)), b = Math.min(n, Math.floor(hi + 1e-9)), P = pRange(c,a,b), rule = ['68,3 %','95,4 %','99,7 %'][z-1];
   $('k7task').innerHTML = taskHTML('k7task', `${C.task(n,p,rule)}`);
@@ -1037,8 +1069,14 @@ const T_ = T; // Alias, damit der Szenentext-Helfer in Karte 9 neben dem Aufgabe
 scenes.k1.preset = function(o){ Object.assign(this, o); setSeg('k1mode', this.mode); setSeg('k1ev', this.ev); this.lit = null; this.upd(); };
 scenes.k2.preset = function(o){ Object.assign(this, o); setSeg('k2g', this.g); this.step = 2; this.fair = false; this.upd(); };
 scenes.k3.preset = function(o){ Object.assign(this, o); $('k3k').max = this.n; this.lit = null; this.upd(); };
-scenes.k5.preset = function(o){ Object.assign(this, o); setSeg('k5m', this.m); setSeg('k5pre', this.pre ?? 2); this.upd(); };
-scenes.k6.preset = function(o){ Object.assign(this, o); setSeg('k6z', this.z-1); setSeg('k6pre', this.pre ?? 2); this.upd(); };
+scenes.k4.preset = function(o){ Object.assign(this, o); $('k4k').max = this.n; this.upd(); };
+scenes.k5.preset = function(o){ if (o.pre == null) o.pre = -1; Object.assign(this, o); setSeg('k5m', this.m); this.upd(); };
+scenes.k6.preset = function(o){ if (o.pre == null) o.pre = -1; Object.assign(this, o); setSeg('k6z', this.z-1); this.upd(); };
+// Klausuraufgaben A–D je Karte
+const K3P = [{n:3,p:0.5,k:2},{n:4,p:0.5,k:1},{n:5,p:0.5,k:3},{n:4,p:0.25,k:1}];
+const K4P = [{n:8,p:0.6,k:4},{n:10,p:0.4,k:6},{n:12,p:0.3,k:4},{n:10,p:0.6,k:7}];
+const K5P = [{n:18,p:0.62,k:7,k2:11,m:1},{n:25,p:0.18,k:3,k2:6,m:3},{n:30,p:0.12,k:4,k2:7,m:4},{n:20,p:0.85,k:17,k2:19,m:1}];
+const K6P = [{n:100,p:0.5,z:1},{n:120,p:1/6,z:1},{n:150,p:0.2,z:1},{n:200,p:0.25,z:1}];
 scenes.k7.preset = function(o){ Object.assign(this, o); setSeg('k7c', this.c); setSeg('k7z', this.z-1); this.step = 6; this.upd(); };
 
 // ---------- Navigation ----------
