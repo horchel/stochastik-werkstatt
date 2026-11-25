@@ -114,7 +114,13 @@ input[type=range]{accent-color:var(--ink)}
 .chip{fill:var(--line)} .chip.T{fill:var(--va)}
 .urn{fill:var(--surface);stroke:var(--ink);stroke-width:2;stroke-linejoin:round}
 .ball{stroke:var(--surface);stroke-width:1.5} .ball.R{fill:var(--va)} .ball.B{fill:var(--vb)} .ball.out{fill:none;stroke:var(--muted);stroke-dasharray:3 2}
-.task{font-size:.9rem;padding:10px 12px;border-radius:8px;background:var(--bg);border-left:4px solid var(--vb);line-height:1.5}
+.task{font-size:.9rem;padding:10px 12px;border-radius:8px;background:var(--bg);border-left:4px solid var(--vb);line-height:1.6}
+mark.kw{position:relative;background:color-mix(in srgb,var(--va) 22%,transparent);color:inherit;border-bottom:2px solid var(--va);border-radius:3px;padding:0 2px;cursor:help;outline:none}
+mark.kw:hover,mark.kw:focus{background:color-mix(in srgb,var(--va) 40%,transparent)}
+mark.kw:hover::after,mark.kw:focus::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 4px);z-index:20;background:var(--ink);color:var(--surface);padding:7px 9px;border-radius:7px;font-size:.78rem;font-weight:400;line-height:1.4;width:max-content;max-width:280px;white-space:normal;box-shadow:0 6px 16px -6px rgba(0,0,0,.5)}
+.kwtg{display:block;margin-top:8px;font:inherit;font-size:.78rem;font-weight:600;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:3px 9px;cursor:pointer}
+.kwlist{margin:8px 0 0;padding-left:1.1em;font-size:.82rem;display:flex;flex-direction:column;gap:5px}
+.kwlist b{color:var(--va)}
 .colbg{fill:var(--va);opacity:.12}
 @media (max-width:1180px){main{grid-template-columns:minmax(0,1fr) 360px}nav{grid-column:1/-1;flex-direction:row;overflow-x:auto;padding:8px}nav .grp{flex-direction:row;align-items:center;flex:none}nav button{white-space:nowrap}}
 @media (max-width:860px){main{grid-template-columns:minmax(0,1fr)}.mid{display:contents}.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;aspect-ratio:auto;height:clamp(240px,42vh,420px);box-shadow:0 6px 14px -10px rgba(0,0,0,.35)}.hint{display:none}}
@@ -274,6 +280,63 @@ function stat(id, html, cls=''){ const e = $(id); e.className = 'status ' + cls;
 function lines(id, arr){ $(id).innerHTML = arr.map(l => `<div>${l}</div>`).join(''); }
 function setSteps(id, i){ [...$(id).children].forEach((li,j) => { li.className = j < i-1 ? 'on' : j === i-1 ? 'cur' : ''; }); }
 
+// ---------- Schlüsselwörter in Aufgabentexten ----------
+const KWS = [
+ [/ohne Zurücklegen/, 'Die Urne ändert sich: Im 2. Zug liegt eine Kugel weniger darin – Zähler und Nenner anpassen.'],
+ [/mit Zurücklegen/, 'Jeder Zug sieht dieselbe Urne – die Brüche bleiben in jeder Stufe gleich.'],
+ [/nacheinander/, 'Die Reihenfolge zählt: RB und BR sind zwei verschiedene Pfade.'],
+ [/zufällig/, 'Jede Kugel ist gleich wahrscheinlich (Laplace-Annahme).'],
+ [/zwei rote|genau eine rote|mindestens eine rote|zwei gleiche/, 'Das gesuchte Ereignis: Welche Pfade gehören dazu? Bei „mindestens“ hilft oft das Gegenereignis.'],
+ [/Nettogewinn/, 'Nettogewinn = Auszahlung − Einsatz. X ist NICHT die Auszahlung.'],
+ [/Einsatz/, 'Wird in jedem Fall bezahlt – von jeder Auszahlung abziehen. „Fairer Einsatz“ heißt E(X) = 0.'],
+ [/Auszahlung|ausgezahlt/, 'Bruttobetrag – der Einsatz ist hier noch nicht abgezogen.'],
+ [/fairer Würfel|gleich wahrscheinliche|gleichzeitig geworfen/, 'Laplace-Experiment: Jedes Ergebnis hat dieselbe Wahrscheinlichkeit (1/6, 1/8, 1/4 …).'],
+ [/Nieten?/, 'Auszahlung 0 € – trotzdem ein Ergebnis mit eigener Wahrscheinlichkeit, Nettogewinn = −Einsatz.'],
+ [/Zufallsgröße X/, 'X ordnet jedem Ergebnis eine Zahl zu. Erster Schritt: alle möglichen Werte k auflisten.'],
+ [/Bernoulli-Kette/, 'Feste Anzahl n, nur Treffer oder Niete, gleiches p, unabhängig → X ist binomialverteilt.'],
+ [/Binomialkoeffizienten?/, '(n über k) = Anzahl der Pfade mit genau k Treffern.'],
+ [/binomialverteilt/, 'X ~ B(n; p): Bernoulli-Formel von Hand oder CAS (binomPdf, binomCdf).'],
+ [/Bernoulli-Formel/, 'P(X = k) = (n über k) · p^k · (1 − p)^(n−k).'],
+ [/näherungsweise ab|Lies/, 'Werte aus Diagramm oder Tabelle entnehmen – und den passenden F-Ausdruck dazuschreiben.'],
+ [/F-Ausdruck/, 'F(k) = P(X ≤ k). Daraus: P(X = k) = F(k) − F(k−1), P(X > k) = 1 − F(k), P(X < k) = F(k−1).'],
+ [/Summe von Einzelwahrscheinlichkeiten/, 'P(X ≤ k) = P(X = 0) + … + P(X = k): alle Säulen bis k addieren.'],
+ [/Säule zeigt P\(X ≤ k\)/, 'Kumuliert: Jede Säule enthält alle Werte bis k. Der Höhenunterschied zweier Säulen ist eine Einzelwahrscheinlichkeit.'],
+ [/unabhängige?n?/, 'Modellannahme der Binomialverteilung: Ein Versuch beeinflusst den nächsten nicht.'],
+ [/zählt die Treffer|zählt die fehlerhaften Teile/, 'Definition von X. Treffer = das, was gezählt wird – nicht unbedingt das Erfreuliche.'],
+ [/fehlerhaft(?:e|en)?/, 'Achtung: Hier ist „fehlerhaft“ der Treffer, p ist die Fehlerquote.'],
+ [/trifft jeweils mit Wahrscheinlichkeit|keimt unabhängig mit Wahrscheinlichkeit|trifft unabhängig mit Wahrscheinlichkeit|Trefferwahrscheinlichkeit/, 'Das ist p – in jedem Versuch gleich.'],
+ [/genau \d+/, '„genau k“: nur die eine Säule k. P(X = k) = F(k) − F(k−1).'],
+ [/mindestens \d+, aber weniger als \d+/, 'Von k (einschließlich) bis k₂ (ausschließlich): F(k₂ − 1) − F(k − 1).'],
+ [/mindestens \d+/, '„mindestens k“ schließt k ein: P(X ≥ k) = 1 − F(k−1).'],
+ [/höchstens \d+/, '„höchstens k“ schließt k ein: P(X ≤ k) = F(k).'],
+ [/mehr als \d+/, '„mehr als k“ schließt k aus: P(X > k) = 1 − F(k).'],
+ [/weniger als \d+/, '„weniger als k“ schließt k aus: P(X < k) = F(k−1).'],
+ [/vier Dezimalstellen/, 'Erst am Ende runden: Ergebnis als 0,xxxx.'],
+ [/1σ-, 2σ- und 3σ-Umgebung|σ-Umgebung(?:en)?/, '[μ − zσ ; μ + zσ] mit ungerundetem σ berechnen, dann nach innen auf ganze Zahlen runden.'],
+ [/nach innen/, 'Untere Grenze aufrunden, obere Grenze abrunden – nur ganze Trefferzahlen zählen.'],
+ [/68,3 %, 95,4 % und 99,7 %/, 'Faustregel für 1σ / 2σ / 3σ, verlässlich bei σ > 3 (Laplace-Bedingung).'],
+ [/ungefähr in [\d,]+ % (?:der|solcher) \w+/, 'Die Prozentzahl verrät die Umgebung: 68,3 % → 1σ, 95,4 % → 2σ, 99,7 % → 3σ.'],
+ [/Bereich angeben|Gesucht ist ein Bereich/, 'Gesucht ist ein Intervall von Trefferzahlen, kein einzelner Wert – Antwort im Sachzusammenhang.'],
+ [/μ und σ/, 'μ = n · p, σ = √(n · p · (1 − p)).']
+];
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const kwOpen = new Set();
+function hlText(seg){
+  const found = [];
+  KWS.forEach(([re,tip]) => { const g = new RegExp(re.source, 'g'); let m; while ((m = g.exec(seg))) { if (!m[0]) { g.lastIndex++; continue; } found.push({s:m.index, e:m.index+m[0].length, tip, txt:m[0]}); } });
+  found.sort((a,b) => a.s - b.s || b.e - a.e);
+  let out = '', pos = 0;
+  for (const f of found) { if (f.s < pos) continue; out += seg.slice(pos, f.s) + `<mark class="kw" tabindex="0" data-tip="${esc(f.tip)}">${f.txt}</mark>`; pos = f.e; }
+  return out + seg.slice(pos);
+}
+function taskHTML(id, html){
+  const out = html.split(/(<[^>]+>)/).map(p => p.startsWith('<') ? p : hlText(p)).join('');
+  const list = []; out.replace(/<mark class="kw"[^>]*data-tip="([^"]*)">([^<]*)<\/mark>/g, (m,t,w) => { if (!list.some(x => x[1] === t)) list.push([w,t]); return m; });
+  const open = kwOpen.has(id);
+  return `<b>Aufgabe:</b> ${out}` + (list.length ? `<button class="kwtg" type="button" data-box="${id}">${open ? 'Erklärungen ausblenden' : `Schlüsselwörter erklären (${list.length})`}</button><ul class="kwlist"${open ? '' : ' hidden'}>${list.map(([w,t]) => `<li><b>${w}</b> – ${t}</li>`).join('')}</ul>` : '');
+}
+document.addEventListener('click', e => { const b = e.target.closest('.kwtg'); if (!b) return; const id = b.dataset.box; if (kwOpen.has(id)) kwOpen.delete(id); else kwOpen.add(id); const ul = b.nextElementSibling; ul.hidden = !kwOpen.has(id); b.textContent = ul.hidden ? `Schlüsselwörter erklären (${ul.children.length})` : 'Erklärungen ausblenden'; });
+
 // ---------- Szenenregister ----------
 const scenes = {}, order = [];
 function scene(id, def){ def.id = id; scenes[id] = def; order.push(id); }
@@ -309,7 +372,7 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
  upd(){
   const S = this, N = S.r + S.b; setSl('k1r', S.r, 0); setSl('k1b', S.b, 0);
   $('k1wrongW').hidden = S.mode === 1;
-  $('k1task').innerHTML = `<b>Aufgabe:</b> In einer Urne liegen <b class="ca">${S.r} rote</b> und <b class="cb">${S.b} blaue</b> Kugeln. Zwei Kugeln werden nacheinander zufällig <b>${S.mode === 0 ? 'ohne' : 'mit'} Zurücklegen</b> gezogen. Berechne die Wahrscheinlichkeit für „${EVN[S.ev]}“.`;
+  $('k1task').innerHTML = taskHTML('k1task', `In einer Urne liegen <b class="ca">${S.r} rote</b> und <b class="cb">${S.b} blaue</b> Kugeln. Zwei Kugeln werden nacheinander zufällig <b>${S.mode === 0 ? 'ohne' : 'mit'} Zurücklegen</b> gezogen. Berechne die Wahrscheinlichkeit für „${EVN[S.ev]}“.`);
   const P = S.paths(S.wrong && S.mode === 0), sel = EV1[S.ev], den = P[0].den;
   const onKeys = S.lit == null ? sel : sel.slice(0, S.lit);
   S.draw(P, onKeys);
@@ -416,7 +479,7 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
  dist(){ return GAMES[this.g].out.map(o => ({k: o.pay - this.e, p: o.n/o.d, f:[o.n,o.d], l:o.l, pay:o.pay})); },
  upd(){
   const S = this, D = S.dist(); setSl('k2e', S.e, 2);
-  $('k2task').innerHTML = `<b>Aufgabe:</b> ${GAMES[S.g].task(S.e)} Die Zufallsgröße X bezeichnet den Nettogewinn in Euro.`;
+  $('k2task').innerHTML = taskHTML('k2task', `${GAMES[S.g].task(S.e)} Die Zufallsgröße X bezeichnet den Nettogewinn in Euro.`);
   const mu = sum(D.map(d => d.k*d.p)), va = sum(D.map(d => (d.k-mu)**2 * d.p)), sd = Math.sqrt(va);
   S.draw(D, mu, sd);
   const head = ['Ergebnis','Auszahl.','k','P(X = k)']; if (S.step >= 2) head.push('k · P'); if (S.step >= 3) head.push('(k − μ)² · P');
@@ -476,7 +539,7 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
  show(){ this.lit = null; this.upd(); },
  upd(){
   const S = this, {n,p,k} = S, q = 1-p; setSl('k3n', n, 0); setSl('k3p', p, 2); setSl('k3k', k, 0);
-  $('k3task').innerHTML = `<b>Aufgabe:</b> X zählt die Treffer einer Bernoulli-Kette mit n = ${n} und p = ${fmt(p,2)}. Berechne den Binomialkoeffizienten für genau ${k} Treffer, P(X = ${k}) mit der Bernoulli-Formel und P(X ≤ ${k}) als Summe von Einzelwahrscheinlichkeiten.`;
+  $('k3task').innerHTML = taskHTML('k3task', `X zählt die Treffer einer Bernoulli-Kette mit n = ${n} und p = ${fmt(p,2)}. Berechne den Binomialkoeffizienten für genau ${k} Treffer, P(X = ${k}) mit der Bernoulli-Formel und P(X ≤ ${k}) als Summe von Einzelwahrscheinlichkeiten.`);
   const arr = binom(n,p), c = cdf(arr), C = choose(n,k), one = Math.pow(p,k) * Math.pow(q,n-k);
   S.draw(arr, c);
   lines('k3eq', [
@@ -536,7 +599,7 @@ scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilu
  upd(){
   const S = this, {n,p,k} = S; setSl('k4n', n, 0); setSl('k4p', p, 2); setSl('k4k', k, 0);
   const arr = binom(n,p), c = cdf(arr), lt = cF(c,k-1), eq = arr[k], gt = 1 - cF(c,k);
-  $('k4task').innerHTML = `<b>Aufgabe:</b> X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}. Jede Säule zeigt ${S.v === 0 ? 'P(X = k)' : 'P(X ≤ k)'}. Lies P(X &lt; ${k}), P(X = ${k}) und P(X &gt; ${k}) näherungsweise ab und gib für jeden Wert den passenden F-Ausdruck an.`;
+  $('k4task').innerHTML = taskHTML('k4task', `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}. Jede Säule zeigt ${S.v === 0 ? 'P(X = k)' : 'P(X ≤ k)'}. Lies P(X &lt; ${k}), P(X = ${k}) und P(X &gt; ${k}) näherungsweise ab und gib für jeden Wert den passenden F-Ausdruck an.`);
   clear();
   if (S.v === 0) { const H = hist({n, arr, pick:true, cls: j => j < k ? 'lt' : j === k ? 'on' : 'gt'});
     if (n <= 14) for (let j = 0; j <= n; j++) if (arr[j] > 0.004) svg.append(T(H.x(j), H.y(arr[j])-10, fix(arr[j],3), 't mono m', 'middle', 10));
@@ -608,7 +671,7 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
   const story = S.pre === 0 ? `Eine Spielerin führt ${n} unabhängige Würfe aus und trifft jeweils mit Wahrscheinlichkeit ${fmt(p,2)}. X zählt die Treffer.`
     : S.pre === 1 ? `Eine Maschine produziert ${n} Teile. Jedes Teil ist unabhängig mit Wahrscheinlichkeit ${fmt(p,2)} fehlerhaft. X zählt die fehlerhaften Teile, die hier als Treffer gelten.`
     : `X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)}.`;
-  $('k5task').innerHTML = `<b>Aufgabe:</b> ${story} Bestimme die Wahrscheinlichkeit für „${evWords(m,k,k2)} Treffer“ (vier Dezimalstellen).`;
+  $('k5task').innerHTML = taskHTML('k5task', `${story} Bestimme die Wahrscheinlichkeit für „${evWords(m,k,k2)} Treffer“ (vier Dezimalstellen).`);
   clear();
   const H = hist({n, arr, pick:true, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
   const plain = aa > bb ? '0' : aa <= 0 ? `F(${bb})` : bb >= n ? `1 − F(${aa-1})` : `F(${bb}) − F(${aa-1})`;
@@ -656,7 +719,7 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
  upd(){
   const S = this, {n,p,z} = S; setSl('k6n', n, 0); setSl('k6p', p, 2);
   const {arr, c, mu, sd, R} = S.rows(), r = R[z-1];
-  $('k6task').innerHTML = `<b>Aufgabe:</b> Z zählt die Treffer einer Binomialverteilung mit n = ${n} und p = ${S.pre === 1 ? '1/6' : fmt(p,2)}. Berechne μ und σ, bestimme die 1σ-, 2σ- und 3σ-Umgebung (nach innen auf ganze Trefferzahlen gerundet) und vergleiche die tatsächlichen Wahrscheinlichkeiten mit 68,3 %, 95,4 % und 99,7 %.`;
+  $('k6task').innerHTML = taskHTML('k6task', `Z zählt die Treffer einer Binomialverteilung mit n = ${n} und p = ${S.pre === 1 ? '1/6' : fmt(p,2)}. Berechne μ und σ, bestimme die 1σ-, 2σ- und 3σ-Umgebung (nach innen auf ganze Trefferzahlen gerundet) und vergleiche die tatsächlichen Wahrscheinlichkeiten mit 68,3 %, 95,4 % und 99,7 %.`);
   clear();
   const H = hist({n, arr, cls: j => (j >= r.a && j <= r.b) ? 'on' : 'dim'});
   drawBand(H, mu, sd, z, r.a, r.b, `${z}σ-Umgebung: ${r.a} ≤ X ≤ ${r.b} · tatsächlich ${pct(r.P,1)} · Faustregel ${pct(r.rule,1)}`, {inside:r.P, left:cF(c,r.a-1), right:1-cF(c,r.b)});
@@ -704,7 +767,7 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
   const S = this, C = CTX[S.c], n = S.c === 2 ? S.n : C.n, p = S.c === 2 ? S.p : C.p, z = S.z; $('k7own').hidden = S.c !== 2; setSl('k7n', S.n, 0); setSl('k7p', S.p, 2);
   const arr = binom(n,p), c = cdf(arr), mu = n*p, sd = Math.sqrt(n*p*(1-p)), lo = mu - z*sd, hi = mu + z*sd;
   const a = Math.max(0, Math.ceil(lo - 1e-9)), b = Math.min(n, Math.floor(hi + 1e-9)), P = pRange(c,a,b), rule = ['68,3 %','95,4 %','99,7 %'][z-1];
-  $('k7task').innerHTML = `<b>Aufgabe:</b> ${C.task(n,p,rule)}`;
+  $('k7task').innerHTML = taskHTML('k7task', `${C.task(n,p,rule)}`);
   clear();
   // Piktogramm: alle n Versuche, davon μ (gerundet) als erwartete Treffer
   const T0 = PL.T; PL.T = 118;
