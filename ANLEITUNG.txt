@@ -59,6 +59,8 @@ sie installieren; ab dann läuft sie offline vom Startbildschirm.
 4. Fertig: Das Symbol liegt auf dem Startbildschirm, die App öffnet im
    Vollbild und funktioniert auch ohne Internet.
 
+Übungsklausuren C und D liegen als PDF im Ordner klausuren/ und sind auf Karte 8 verlinkt.
+
 Direkt zu einer Karte springen: Adresse mit #k1 … #k8 ergänzen,
 z. B.  .../stochastik-werkstatt/#k5  (mindestens / höchstens …).
 
