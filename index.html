@@ -125,7 +125,7 @@ input[type=range]{accent-color:var(--ink)}
 .slot i{font-style:normal;color:var(--muted)}
 .fslot{fill:var(--bg);stroke:var(--line);stroke-width:2} .fslot.ok{stroke:var(--vr)} .fslot.bad{stroke:var(--hit)} .fslot.active{stroke:var(--vb);stroke-width:3}
 .dl{display:flex;flex-direction:column;gap:6px}
-.dlitem{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);text-decoration:none}
+.dlitem{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)} .dlitem>a:first-child{display:flex;flex-direction:column;gap:2px;color:inherit;text-decoration:none}
 .dlitem:hover{border-color:var(--ink)}
 .dlitem b{font-size:.9rem} .dlitem span{font-size:.78rem;color:var(--muted)} .dlsave{font-size:.76rem;color:var(--va);text-decoration:underline;margin-top:2px}
 .err{display:none;background:var(--hit);color:#fff;padding:8px 12px;border-radius:8px;font-size:.85rem}
@@ -913,7 +913,7 @@ scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
   `<div class="eq col">${cond('Blau = Regel, die immer gilt', undefined)}${cond('Grün = geprüft und erfüllt', true, 'Kontrolle')}${cond('Rot = verletzt, Vorsicht', false)}<span class="m">So sehen die Bedingungs-Chips auf jeder Karte aus. Im Aufgabentext: <mark class="kw neg" tabindex="0" data-tip="Umkehrwort">rot</mark> = Umkehrwort, <mark class="kw" tabindex="0" data-tip="Fachbegriff">orange</mark> = Fachbegriff.</span></div>` +
   `<p class="note">Vorgehen in der Klausur: Stichwort markieren, Karte im Kopf aufrufen, Formel erst mit Buchstaben, dann Zahlen einsetzen, Kontrolle (Summe = 1, Grenzen eingeschlossen?, Einheit im Antwortsatz).</p>` +
   `<div><div class="lbl">Einführung und Übungsklausuren (PDF, öffnet im Browser)</div><div class="dl">` +
-  DL   .map(([h,t,s]) => `<a class="dlitem" href="${h}" target="_blank" rel="noopener"><b>▸ ${t} <span class="m" style="font-weight:400">(im Browser öffnen)</span></b><span>${s}</span><a class="dlsave" href="${h}" download onclick="event.stopPropagation()">⬇ herunterladen</a></a>`).join('') + `</div><p class="note">Gleicher Aufbau wie die Probeklausuren A und B: Teil A ohne Hilfsmittel (24 P), Teil B mit CAS (36 P). Zum Herunterladen ist einmal Internet nötig.</p></div>`,
+  DL   .map(([h,t,s]) => `<div class="dlitem"><a href="${h}" target="_blank" rel="noopener"><b>▸ ${t} <span class="m" style="font-weight:400">(im Browser öffnen)</span></b><span>${s}</span></a><a class="dlsave" href="${h}" download>⬇ herunterladen</a></div>`).join('') + `</div><p class="note">Gleicher Aufbau wie die Probeklausuren A und B: Teil A ohne Hilfsmittel (24 P), Teil B mit CAS (36 P). Zum Herunterladen ist einmal Internet nötig.</p></div>`,
  init(){ this.el.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); }); },
  show(){ clear();
   const steps = [['1','Was wird gezählt?','Zufallsgröße X = Anzahl der …'],['2','Welches Modell?','ohne/mit Zurücklegen · Binomialverteilung · Zufallsgröße mit E(X)'],['3','n, p, Treffer?','Treffer = das, was gezählt wird'],['4','Was ist gesucht?','„mindestens k“ ⇒ X ≥ k · „mehr als k“ ⇒ X > k · dann F-Ausdruck'],['5','Antwortform?','Bruch · 4 Dezimalen · Antwortsatz · Bedingungen']];
