@@ -99,6 +99,7 @@ input[type=range]{accent-color:var(--ink)}
 .dist th{font-weight:600;color:var(--muted)}
 .dist th:first-child,.dist td:first-child{text-align:left}
 .dist tr.foot td{font-weight:600;border-top:2px solid var(--ink)}
+.dist.wrap1 td:first-child{white-space:normal;max-width:9em;line-height:1.3}
 .dist .h1{background:color-mix(in srgb,var(--va) 28%,transparent)}
 .dist tr.h1 td,.dist tr.h1 th{background:color-mix(in srgb,var(--va) 22%,transparent);font-weight:600;color:var(--ink)}
 .kw{width:100%;border-collapse:collapse;font-size:.86rem}
@@ -318,12 +319,12 @@ const KWS = [
  [/zählt die Treffer|zählt die fehlerhaften Teile/, 'Definition von X. Treffer = das, was gezählt wird – nicht unbedingt das Erfreuliche.'],
  [/fehlerhaft(?:e|en)?/, 'Achtung: Hier ist „fehlerhaft“ der Treffer, p ist die Fehlerquote.'],
  [/trifft jeweils mit Wahrscheinlichkeit|keimt unabhängig mit Wahrscheinlichkeit|trifft unabhängig mit Wahrscheinlichkeit|Trefferwahrscheinlichkeit/, 'Das ist p – in jedem Versuch gleich.'],
- [/genau \d+/, '„genau k“: nur die eine Säule k. P(X = k) = F(k) − F(k−1).'],
- [/mindestens \d+, aber weniger als \d+/, 'Von k (einschließlich) bis k₂ (ausschließlich): F(k₂ − 1) − F(k − 1).'],
- [/mindestens \d+/, '„mindestens k“ schließt k ein: P(X ≥ k) = 1 − F(k−1).'],
- [/höchstens \d+/, '„höchstens k“ schließt k ein: P(X ≤ k) = F(k).'],
- [/mehr als \d+/, '„mehr als k“ schließt k aus: P(X > k) = 1 − F(k).'],
- [/weniger als \d+/, '„weniger als k“ schließt k aus: P(X < k) = F(k−1).'],
+ [/genau \d+/, '„genau k“ ⇒ X = k: nur die eine Säule k. P(X = k) = F(k) − F(k−1).'],
+ [/mindestens \d+, aber weniger als \d+/, '„mindestens k, aber weniger als k₂“ ⇒ k ≤ X < k₂: k eingeschlossen, k₂ ausgeschlossen. F(k₂ − 1) − F(k − 1).'],
+ [/mindestens \d+/, '„mindestens k“ ⇒ X ≥ k (k eingeschlossen). P(X ≥ k) = 1 − F(k−1).'],
+ [/höchstens \d+/, '„höchstens k“ ⇒ X ≤ k (k eingeschlossen). P(X ≤ k) = F(k).'],
+ [/mehr als \d+/, '„mehr als k“ ⇒ X > k, also ab k + 1 (k ausgeschlossen). P(X > k) = 1 − F(k).'],
+ [/weniger als \d+/, '„weniger als k“ ⇒ X < k, also bis k − 1 (k ausgeschlossen). P(X < k) = F(k−1).'],
  [/vier Dezimalstellen/, 'Erst am Ende runden: Ergebnis als 0,xxxx.'],
  [/1σ-, 2σ- und 3σ-Umgebung|σ-Umgebung(?:en)?/, '[μ − zσ ; μ + zσ] mit ungerundetem σ berechnen, dann nach innen auf ganze Zahlen runden.'],
  [/nach innen/, 'Untere Grenze aufrunden, obere Grenze abrunden – nur ganze Trefferzahlen zählen.'],
@@ -664,6 +665,8 @@ const MODES = ['genau k','mindestens k','höchstens k','mehr als k','weniger als
 const evSet = (m,n,k,k2) => [[k,k],[k,n],[0,k],[k+1,n],[0,k-1],[k,k2-1]][m];
 const wrongSet = (m,n,k,k2) => [[k,k],[k+1,n],[0,k-1],[k,n],[0,k],[k+1,k2]][m];
 const evWords = (m,k,k2) => ['genau ' + k, 'mindestens ' + k, 'höchstens ' + k, 'mehr als ' + k, 'weniger als ' + k, `mindestens ${k}, aber weniger als ${k2}`][m];
+// Übersetzung der Formulierung in eine Ungleichung (html: < und > maskiert)
+const ineq = (m,k,k2,html) => { const lt = html ? '&lt;' : '<', gt = html ? '&gt;' : '>'; return [`X = ${k}`, `X ≥ ${k}`, `X ≤ ${k}`, `X ${gt} ${k}`, `X ${lt} ${k}`, `${k} ≤ X ${lt} ${k2}`][m]; };
 function evF(m,k,k2,F){ const km = fmt(k-1,0); return [`${F}(${k}) − ${F}(${km})`, `1 − ${F}(${km})`, `${F}(${k})`, `1 − ${F}(${k})`, `${F}(${km})`, `${F}(${k2-1}) − ${F}(${km})`][m]; }
 scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomialverteilung', hint:'Orange Säulen gehören zum Ereignis · Säule antippen wählt k',
  html: UI.q('Welche Trefferzahlen meint die Formulierung – und welcher F-Ausdruck passt dazu?') +
@@ -672,7 +675,8 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
   UI.sl('k5n','n',1,100,1,18) + UI.sl('k5p','p',0.01,0.99,0.01,0.62) + UI.sl('k5k','k',0,18,1,7) + `<div id="k5k2w">${UI.sl('k5k2','k₂',1,18,1,11)}</div>` +
   `<div><div class="lbl">Formulierung in der Aufgabe</div>${UI.seg('k5m', MODES)}</div>` +
   UI.chk('k5wrong','Fehlerweg: Grenze falsch – „mindestens“ wie „mehr als“ behandeln (und umgekehrt)') +
-  `<div class="eq col" id="k5eq"></div>` + UI.st('k5st') +
+  `<div class="eq col" id="k5eq"></div>` +
+  `<div><div class="lbl">Übersetzungstabelle (aktuelle Werte)</div><div class="tscroll"><table class="dist wrap1" id="k5tab"></table></div></div>` + UI.st('k5st') +
   `<p class="note"><b>Modellannahmen (Aufgabe 5a):</b> feste Anzahl n von Versuchen · jeder Versuch hat nur Treffer/Niete · gleiches p in jedem Versuch · Versuche unabhängig ⇒ X ist binomialverteilt.</p>`,
  init(){ const S = this; S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; S.m = 0; S.wrong = false; S.pre = 0;
   onSeg('k5pre', v => { S.pre = v; if (v === 0) { S.n = 18; S.p = 0.62; S.k = 7; S.k2 = 11; } if (v === 1) { S.n = 25; S.p = 0.18; S.k = 3; S.k2 = 6; } S.upd(); });
@@ -696,14 +700,15 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
   clear();
   const H = hist({n, arr, pick:true, cls: j => (j >= a && j <= b) ? 'on' : 'dim'});
   const plain = aa > bb ? '0' : aa <= 0 ? `F(${bb})` : bb >= n ? `1 − F(${aa-1})` : `F(${bb}) − F(${aa-1})`;
-  svg.append(T(450, PL.T-18, `P(${evWords(m,k,k2)} Treffer) = P(${aa} ≤ X ≤ ${bb}) = ${plain} = ${fix(P,4)}`, 't b'));
+  svg.append(T(450, PL.T-18, `P(${evWords(m,k,k2)} Treffer) = P(${ineq(m,k,k2)}) = P(${aa} ≤ X ≤ ${bb}) = ${plain} = ${fix(P,4)}`, 't b'));
   if (aa <= bb) { bracket(H.x(aa)-H.w*0.4, H.x(bb)+H.w*0.4, PL.B+28, `„${evWords(m,k,k2)}“ = Trefferzahlen ${aa} bis ${bb} (${bb-aa+1} Säule${bb-aa ? 'n' : ''}, zusammen ${pct(P,2)})`, '--va');
     if (bb - aa < 8) for (let j = aa; j <= bb; j++) if (arr[j] > 0.003) svg.append(T(H.x(j), H.y(arr[j])-10, fix(arr[j],4), 't mono ca', 'middle', 10)); }
   if (S.wrong && m !== 0) { const [wa,wb] = wrongSet(m,n,k,k2); const ja = Math.max(0,wa), jb = Math.min(n,wb); if (ja <= jb) bracket(H.x(ja)-H.w*0.4, H.x(jb)+H.w*0.4, PL.T+38, `Fehlerweg: Säulen ${ja} bis ${jb}`, '--hit', 0, true); }
   const F = Fs(n,p), set = aa > bb ? '{ }' : bb - aa <= 6 ? '{' + range(aa,bb).join('; ') + '}' : `{${aa}; ${aa+1}; …; ${bb}}`;
   lines('k5eq', [
-   `<span class="m">Ereignis:</span> „${evWords(m,k,k2)} Treffer“ ⇒ Trefferzahlen ${set}`,
-   `<span class="m">Als Intervall:</span> P(${aa} ≤ X ≤ ${bb})`,
+   `<span class="m">Übersetzen:</span> „${evWords(m,k,k2)} Treffer“ ⇒ <b>${ineq(m,k,k2,true)}</b>`,
+   `<span class="m">Trefferzahlen:</span> ${ineq(m,k,k2,true)} ⇒ ${set}`,
+   `<span class="m">Als Intervall:</span> P(${ineq(m,k,k2,true)}) = P(${aa} ≤ X ≤ ${bb})`,
    `<span class="m">Allgemein:</span> ${['P(X = k) = F(k) − F(k − 1)', 'P(X ≥ k) = 1 − F(k − 1)', 'P(X ≤ k) = F(k)', 'P(X &gt; k) = 1 − F(k)', 'P(X &lt; k) = F(k − 1)', 'P(k ≤ X &lt; k₂) = F(k₂ − 1) − F(k − 1)'][m]}  (immer: P(a ≤ X ≤ b) = F(b) − F(a − 1))`,
    `<span class="m">Eingesetzt:</span> ${evF(m,k,k2,F)} = ${aa > bb ? '0' : `${fix(cF(c,bb),4)} − ${fix(cF(c,aa-1),4)}`}`,
    `<span class="m">Wert (CAS, 4 Dezimalen):</span> <b>${fix(P,4)}</b>`,
@@ -711,6 +716,8 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
    cond(m === 1 || m === 2 ? `„${MODES[m].split(' ')[0]}“ schließt die Grenze k = ${k} EIN` : m === 3 || m === 4 ? `„${MODES[m].replace(' k','')}“ schließt die Grenze k = ${k} AUS` : m === 5 ? `k = ${k} eingeschlossen, k₂ = ${k2} ausgeschlossen` : `nur die eine Säule k = ${k}`, undefined, 'Grenze'),
    cond('Binomialverteilung nur, wenn: n fest · Treffer/Niete · p gleich · unabhängig')
   ]);
+  $('k5tab').innerHTML = `<tr><th>Formulierung</th><th>Ungleichung</th><th>F-Ausdruck</th></tr>` + MODES.map((t,i) =>
+    `<tr class="${i === m ? 'h1' : ''}"><td>${evWords(i,k,k2)}</td><td>${ineq(i,k,k2,true)}</td><td>${evF(i,k,k2,'F')}</td></tr>`).join('');
   if (S.wrong && m !== 0) {
     const [wa,wb] = wrongSet(m,n,k,k2), wp = pRange(c,wa,wb);
     stat('k5st', `<b>Fehlerweg.</b> Mit der falschen Grenze käme ${fix(wp,4)} heraus statt ${fix(P,4)}. Der Unterschied ist genau ${m === 5 ? `P(X = ${k}) − P(X = ${k2}) = ${fix(arr[k]-arr[k2],4)}` : `P(X = ${k}) = ${fix(arr[k],4)}`}: Die Säule bei k = ${k} gehört ${m === 1 || m === 2 ? 'dazu' : 'nicht dazu'}.`, 'bad');
@@ -826,14 +833,14 @@ const KW = [['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufalls
 scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
  html: UI.q('Welches Stichwort steht in der Aufgabe – und was frage ich mich, bevor ich rechne?') +
   `<div class="task"><b>Lesefahrplan vor jeder Rechnung:</b><ol class="steps" style="margin-top:6px">` +
-  [['Was wird gezählt?','→ Zufallsgröße X benennen („X = Anzahl der …“)'],['Welches Modell?','→ Umkehr- und Signalwörter: <mark class="kw neg" tabindex="0" data-tip="Ein Wort dreht die Aufgabe">ohne</mark>/<mark class="kw neg" tabindex="0" data-tip="Ein Wort dreht die Aufgabe">mit</mark> Zurücklegen, <mark class="kw" tabindex="0" data-tip="→ Binomialverteilung">unabhängig</mark>, <mark class="kw" tabindex="0" data-tip="→ Erwartungswert">Nettogewinn</mark>'],['Was sind n, p und Treffer?','→ Treffer = das, was gezählt wird (auch „fehlerhaft“)'],['Was genau ist gesucht?','→ in Trefferzahlen übersetzen: „mehr als 7“ = 8 … n, „in 95,4 % der Fälle“ = 2σ'],['Wie muss die Antwort aussehen?','→ Bruch gekürzt, 4 Dezimalen, Antwortsatz, Bedingungen geprüft']]
+  [['Was wird gezählt?','→ Zufallsgröße X benennen („X = Anzahl der …“)'],['Welches Modell?','→ Umkehr- und Signalwörter: <mark class="kw neg" tabindex="0" data-tip="Ein Wort dreht die Aufgabe">ohne</mark>/<mark class="kw neg" tabindex="0" data-tip="Ein Wort dreht die Aufgabe">mit</mark> Zurücklegen, <mark class="kw" tabindex="0" data-tip="→ Binomialverteilung">unabhängig</mark>, <mark class="kw" tabindex="0" data-tip="→ Erwartungswert">Nettogewinn</mark>'],['Was sind n, p und Treffer?','→ Treffer = das, was gezählt wird (auch „fehlerhaft“)'],['Was genau ist gesucht?','→ erst in eine Ungleichung übersetzen: „mindestens k“ ⇒ X ≥ k, „mehr als k“ ⇒ X &gt; k, „höchstens k“ ⇒ X ≤ k, „weniger als k“ ⇒ X &lt; k; „in 95,4 % der Fälle“ ⇒ 2σ-Umgebung'],['Wie muss die Antwort aussehen?','→ Bruch gekürzt, 4 Dezimalen, Antwortsatz, Bedingungen geprüft']]
    .map(([q,a]) => `<li class="on"><b>${q}</b> <span class="m">${a}</span></li>`).join('') + `</ol></div>` +
   `<table class="kw">${KW.map(([t,id]) => `<tr><td>${t}</td><td><button data-go="${id}">Karte ${id.slice(1)}</button></td></tr>`).join('')}</table>` +
   `<div class="eq col">${cond('Blau = Regel, die immer gilt', undefined)}${cond('Grün = geprüft und erfüllt', true, 'Kontrolle')}${cond('Rot = verletzt, Vorsicht', false)}<span class="m">So sehen die Bedingungs-Chips auf jeder Karte aus. Im Aufgabentext: <mark class="kw neg" tabindex="0" data-tip="Umkehrwort">rot</mark> = Umkehrwort, <mark class="kw" tabindex="0" data-tip="Fachbegriff">orange</mark> = Fachbegriff.</span></div>` +
   `<p class="note">Vorgehen in der Klausur: Stichwort markieren, Karte im Kopf aufrufen, Formel erst mit Buchstaben, dann Zahlen einsetzen, Kontrolle (Summe = 1, Grenzen eingeschlossen?, Einheit im Antwortsatz).</p>`,
  init(){ this.el.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); }); },
  show(){ clear();
-  const steps = [['1','Was wird gezählt?','Zufallsgröße X = Anzahl der …'],['2','Welches Modell?','ohne/mit Zurücklegen · Binomialverteilung · Zufallsgröße mit E(X)'],['3','n, p, Treffer?','Treffer = das, was gezählt wird'],['4','Was ist gesucht?','Trefferzahlen · F-Ausdruck · σ-Umgebung'],['5','Antwortform?','Bruch · 4 Dezimalen · Antwortsatz · Bedingungen']];
+  const steps = [['1','Was wird gezählt?','Zufallsgröße X = Anzahl der …'],['2','Welches Modell?','ohne/mit Zurücklegen · Binomialverteilung · Zufallsgröße mit E(X)'],['3','n, p, Treffer?','Treffer = das, was gezählt wird'],['4','Was ist gesucht?','„mindestens k“ ⇒ X ≥ k · „mehr als k“ ⇒ X > k · dann F-Ausdruck'],['5','Antwortform?','Bruch · 4 Dezimalen · Antwortsatz · Bedingungen']];
   steps.forEach(([n,q,a],i) => { const y = 72 + i*86; svg.append(el('rect', {x:90, y:y-30, width:720, height:66, rx:12, class:'colbg'}));
     svg.append(el('circle', {cx:130, cy:y+3, r:20, class:'nd root'})); svg.append(T(130, y+4, n, 't nl', 'middle', 18));
     svg.append(T(170, y-6, q, 't b', 'start', 18)); svg.append(T(170, y+18, a, 't m', 'start', 14));
