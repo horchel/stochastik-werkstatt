@@ -502,7 +502,7 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
   const rows = D.map(d => { const c = [d.l, eur(d.pay), eur(d.k), `${d.f[0]}/${d.f[1]}`]; if (S.step >= 2) c.push(fmt(d.k*d.p,3)); if (S.step >= 3) c.push(fmt((d.k-mu)**2*d.p,3)); return c; });
   const foot = ['Summe','','','1']; if (S.step >= 2) foot.push('E(X) = ' + fmt(mu,3)); if (S.step >= 3) foot.push('Var = ' + fmt(va,3));
   $('k2tab').innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') + `<tr class="foot">${foot.map(c => `<td>${c}</td>`).join('')}</tr>`;
-  const L = [`<span class="m">Nettogewinn:</span> k = Auszahlung − Einsatz (${eur(S.e)})`, cond(`Σ P(X = k) = ${D.map(d => `${d.f[0]}/${d.f[1]}`).join(' + ')} = 1`, true, 'Kontrolle')];
+  const L = [cond(`Laplace-Experiment: alle ${GAMES[S.g].items.length} Ergebnisse gleich wahrscheinlich ⇒ P(Ergebnis) = 1/${GAMES[S.g].items.length}`), `<span class="m">Nettogewinn:</span> k = Auszahlung − Einsatz (${eur(S.e)})`, cond(`Σ P(X = k) = ${D.map(d => `${d.f[0]}/${d.f[1]}`).join(' + ')} = 1`, true, 'Kontrolle')];
   if (S.step >= 2) L.push(`E(X) = Σ k · P(X = k) = k₁·P(X = k₁) + k₂·P(X = k₂) + k₃·P(X = k₃)`, `E(X) = ${D.map(d => `${fmt(d.k)}·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(mu,3)} €</b>`,
     cond(`Fair ⇔ E(X) = 0 ⇔ Einsatz = E(Auszahlung): Im Mittel wird genauso viel eingezahlt wie ausgezahlt. Hier: Einsatz ${eur(S.e)}, mittlere Auszahlung E(Auszahlung) = ${D.map(d => `${d.pay}·${d.f[0]}/${d.f[1]}`).join(' + ')} = ${eur(sum(D.map(d => d.pay*d.p)))} → E(X) = ${fmt(mu,2)} € ${Math.abs(mu) < 1e-9 ? '= 0, das Spiel ist fair' : mu < 0 ? '< 0: es wird mehr eingezahlt als ausgezahlt, Nachteil für die Spielerin' : '> 0: es wird mehr ausgezahlt als eingezahlt, Vorteil für die Spielerin'}`, Math.abs(mu) < 1e-9 ? true : undefined, 'Fair?'));
   if (S.step >= 3) L.push(`Var(X) = Σ (k − μ)² · P(X = k)  mit μ = E(X)`, `Var(X) = ${D.map(d => `(${fmt(d.k)} − ${fmt(mu,2)})²·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(va,3)}</b>`, `σ = √Var(X) = √${fmt(va,3)} = <b>${fmt(sd,3)} €</b>`);
@@ -565,7 +565,8 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
    `<span class="m">Bernoulli-Formel:</span> P(X = k) = (n über k) · p<sup>k</sup> · (1 − p)<sup>n−k</sup> → P(X = ${k}) = ${C} · ${fix(one,4)} = <b>${fix(arr[k],4)}</b>`,
    `<span class="m">Summe:</span> P(X ≤ k) = P(X = 0) + P(X = 1) + … + P(X = k) → P(X ≤ ${k}) = ${range(0,k).map(i => `P(X = ${i})`).join(' + ')} = ${range(0,k).map(i => fix(arr[i],4)).join(' + ')} = <b>${fix(cF(c,k),4)}</b>`,
    `<span class="m">F-Schreibweise:</span> P(X = ${k}) = ${Bs(n,p)}(${k}) ; P(X ≤ ${k}) = ${Fs(n,p)}(${k}) = ${fix(cF(c,k),4)}`,
-   cond('Bernoulli-Kette ⇔ n fest · nur Treffer/Niete · p in jedem Versuch gleich · Versuche unabhängig')
+   cond('Bernoulli-Kette ⇔ n fest · nur Treffer/Niete · p in jedem Versuch gleich · Versuche unabhängig'),
+   cond(`Σ P(X = k) über alle k = ${range(0,n).map(i => fix(arr[i],4)).join(' + ')} = ${fix(sum(arr),4)}`, Math.abs(sum(arr)-1) < 1e-6, 'Kontrolle')
   ]);
   if (S.wrong) stat('k3st', `<b>Fehlerweg.</b> Ohne den Binomialkoeffizienten zählst du nur <em>einen</em> der ${C} Pfade mit ${k} Treffern: ${fix(one,4)} statt ${C} · ${fix(one,4)} = ${fix(arr[k],4)}. Jeder Pfad in der Spalte ist gleich wahrscheinlich, deshalb wird mit der Anzahl der Pfade multipliziert.`, 'bad');
   else stat('k3st', `Es gibt <b>${C}</b> Pfade mit genau ${k} Treffern (Spalte k = ${k}). Jeder hat die Wahrscheinlichkeit p${sup(k)} · (1 − p)${sup(n-k)}. Anzahl mal Pfadwert ergibt P(X = ${k}).`, 'ok');
@@ -643,6 +644,7 @@ scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilu
    `<span class="cb">P(X &lt; ${k})</span> = P(X ≤ ${fmt(k-1,0)}) = ${F}(${fmt(k-1,0)}) = <b>${fix(lt,4)}</b>`,
    `<span class="ca">P(X = ${k})</span> = ${F}(${k}) − ${F}(${fmt(k-1,0)}) = ${fix(cF(c,k),4)} − ${fix(lt,4)} = <b>${fix(eq,4)}</b>`,
    `<span class="cr">P(X &gt; ${k})</span> = 1 − ${F}(${k}) = 1 − ${fix(cF(c,k),4)} = <b>${fix(gt,4)}</b>`,
+   cond(`F ist kumuliert: F(k) = P(X ≤ k) wächst von F(−1) = 0 bis F(${n}) = 1, nie fallend`),
    cond(`P(X &lt; k) + P(X = k) + P(X &gt; k) = 1: ${fix(lt,4)} + ${fix(eq,4)} + ${fix(gt,4)} = ${fix(lt+eq+gt,4)}`, Math.abs(lt+eq+gt-1) < 1e-6, 'Kontrolle')
   ]);
   if (n <= 15) { $('k4tw').hidden = false;
@@ -751,7 +753,8 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
    `<span class="m">${z}σ-Umgebung:</span> [μ − zσ ; μ + zσ] = [${fmt(mu,2)} − ${z}·${fmt(sd,3)} ; ${fmt(mu,2)} + ${z}·${fmt(sd,3)}] = [${fmt(r.lo,2)} ; ${fmt(r.hi,2)}] → nach innen gerundet [${r.a} ; ${r.b}]`,
    `<span class="m">Wahrscheinlichkeit:</span> P(a ≤ X ≤ b) = F(b) − F(a − 1) → P(${r.a} ≤ X ≤ ${r.b}) = ${Fs(n,p)}(${r.b}) − ${Fs(n,p)}(${fmt(r.a-1,0)}) = ${fix(cF(c,r.b),4)} − ${fix(cF(c,r.a-1),4)} = <b>${fix(r.P,4)}</b> ≈ ${pct(r.P,1)}`,
    cond(`Laplace-Bedingung σ > 3: σ = ${fmt(sd,2)}`, sd > 3),
-   cond('Grenzen mit ungerundetem σ berechnen, erst dann nach innen runden (unten auf-, oben abrunden)')
+   cond('Grenzen mit ungerundetem σ berechnen, erst dann nach innen runden (unten auf-, oben abrunden)'),
+   cond(`innen + links + rechts = 1: ${fix(r.P,4)} + ${fix(cF(c,r.a-1),4)} + ${fix(1-cF(c,r.b),4)} = ${fix(r.P + cF(c,r.a-1) + 1 - cF(c,r.b),4)}`, true, 'Kontrolle')
   ]);
   $('k6tab').innerHTML = `<tr><th>z</th><th>μ ± zσ</th><th>gerundet</th><th>P tatsächlich</th><th>Regel</th></tr>` +
     R.map(q => `<tr class="${q.z === z ? 'h1' : ''}"><td>${q.z}σ</td><td>${fmt(q.lo,2)} … ${fmt(q.hi,2)}</td><td>${q.a} … ${q.b}</td><td>${pct(q.P,1)}</td><td>${pct(q.rule,1)}</td></tr>`).join('');
@@ -821,14 +824,21 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
 // =====================================================================
 const KW = [['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufallsgröße, Nettogewinn, Erwartungswert, fairer Einsatz, Varianz, σ','k2'],['Bernoulli-Kette, Binomialkoeffizient, „von Hand“, Bernoulli-Formel','k3'],['Diagramm ablesen, Tabelle, kumuliert, F-Schreibweise, B<sub>n;p</sub>(k)','k4'],['genau / mindestens / höchstens / mehr als / weniger als, Modellannahmen','k5'],['Sigma-Umgebung, μ und σ, 68,3 % / 95,4 % / 99,7 % vergleichen','k6'],['Bereich im Sachzusammenhang, „in 95,4 % der Fälle“, erwartete Schwankung','k7']];
 scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
- html: UI.q('Welches Stichwort steht in der Aufgabe?') +
+ html: UI.q('Welches Stichwort steht in der Aufgabe – und was frage ich mich, bevor ich rechne?') +
+  `<div class="task"><b>Lesefahrplan vor jeder Rechnung:</b><ol class="steps" style="margin-top:6px">` +
+  [['Was wird gezählt?','→ Zufallsgröße X benennen („X = Anzahl der …“)'],['Welches Modell?','→ Umkehr- und Signalwörter: <mark class="kw neg" tabindex="0" data-tip="Ein Wort dreht die Aufgabe">ohne</mark>/<mark class="kw neg" tabindex="0" data-tip="Ein Wort dreht die Aufgabe">mit</mark> Zurücklegen, <mark class="kw" tabindex="0" data-tip="→ Binomialverteilung">unabhängig</mark>, <mark class="kw" tabindex="0" data-tip="→ Erwartungswert">Nettogewinn</mark>'],['Was sind n, p und Treffer?','→ Treffer = das, was gezählt wird (auch „fehlerhaft“)'],['Was genau ist gesucht?','→ in Trefferzahlen übersetzen: „mehr als 7“ = 8 … n, „in 95,4 % der Fälle“ = 2σ'],['Wie muss die Antwort aussehen?','→ Bruch gekürzt, 4 Dezimalen, Antwortsatz, Bedingungen geprüft']]
+   .map(([q,a]) => `<li class="on"><b>${q}</b> <span class="m">${a}</span></li>`).join('') + `</ol></div>` +
   `<table class="kw">${KW.map(([t,id]) => `<tr><td>${t}</td><td><button data-go="${id}">Karte ${id.slice(1)}</button></td></tr>`).join('')}</table>` +
-  `<p class="note">Vorgehen in der Klausur: Stichwort markieren, Karte im Kopf aufrufen, Rezept Schritt für Schritt, Kontrolle (Summe = 1, Grenzen eingeschlossen?, Einheit im Antwortsatz).</p>`,
+  `<div class="eq col">${cond('Blau = Regel, die immer gilt', undefined)}${cond('Grün = geprüft und erfüllt', true, 'Kontrolle')}${cond('Rot = verletzt, Vorsicht', false)}<span class="m">So sehen die Bedingungs-Chips auf jeder Karte aus. Im Aufgabentext: <mark class="kw neg" tabindex="0" data-tip="Umkehrwort">rot</mark> = Umkehrwort, <mark class="kw" tabindex="0" data-tip="Fachbegriff">orange</mark> = Fachbegriff.</span></div>` +
+  `<p class="note">Vorgehen in der Klausur: Stichwort markieren, Karte im Kopf aufrufen, Formel erst mit Buchstaben, dann Zahlen einsetzen, Kontrolle (Summe = 1, Grenzen eingeschlossen?, Einheit im Antwortsatz).</p>`,
  init(){ this.el.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); }); },
  show(){ clear();
-  const items = [['Teil A · ohne Hilfsmittel','Karten 1–3: Brüche, Tabelle, Bernoulli-Formel'],['Teil B · mit CAS','Karten 4–7: Verteilung, F-Ausdrücke, Sigma-Umgebungen']];
-  items.forEach(([h,t],i) => { const y = 170 + i*140; svg.append(el('rect', {x:120, y:y-50, width:660, height:100, rx:14, class:'colbg'})); svg.append(T(450, y-14, h, 't b', 'middle', 20)); svg.append(T(450, y+18, t, 't m', 'middle', 15)); });
-  svg.append(T(450, 440, 'Rezept: Stichwort → Karte → Schritte → Kontrolle', 't', 'middle', 16));
+  const steps = [['1','Was wird gezählt?','Zufallsgröße X = Anzahl der …'],['2','Welches Modell?','ohne/mit Zurücklegen · Binomialverteilung · Zufallsgröße mit E(X)'],['3','n, p, Treffer?','Treffer = das, was gezählt wird'],['4','Was ist gesucht?','Trefferzahlen · F-Ausdruck · σ-Umgebung'],['5','Antwortform?','Bruch · 4 Dezimalen · Antwortsatz · Bedingungen']];
+  steps.forEach(([n,q,a],i) => { const y = 72 + i*86; svg.append(el('rect', {x:90, y:y-30, width:720, height:66, rx:12, class:'colbg'}));
+    svg.append(el('circle', {cx:130, cy:y+3, r:20, class:'nd root'})); svg.append(T(130, y+4, n, 't nl', 'middle', 18));
+    svg.append(T(170, y-6, q, 't b', 'start', 18)); svg.append(T(170, y+18, a, 't m', 'start', 14));
+    if (i < steps.length-1) svg.append(el('line', {x1:130, y1:y+36, x2:130, y2:y+56, class:'edge'})); });
+  svg.append(T(450, 520, 'Teil A ohne Hilfsmittel: Karten 1–3 · Teil B mit CAS: Karten 4–7', 't m', 'middle', 14));
  }
 });
 
