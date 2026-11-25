@@ -579,16 +579,16 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
 // =====================================================================
 // Karte 3: Bernoulli-Formel von Hand
 // =====================================================================
-scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint:'Jede Zeile ist ein Pfad; eine Spalte sammelt alle Pfade mit gleicher Trefferzahl',
+scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint:'Bernoulli-Baum: Treffer nach oben (orange), Niete nach unten (grau) · leuchtende Pfade haben genau k Treffer',
  html: UI.q('Wie viele Pfade haben genau k Treffer, und was ist jeder einzelne Pfad wert?') +
   klausurUI('k3K') + `<div class="task" id="k3task"></div>` +
-  UI.sl('k3n','n = Anzahl der Versuche',1,6,1,3) + UI.sl('k3p','p = Trefferwahrscheinlichkeit',0.05,0.95,0.05,0.5) + UI.sl('k3k','k = Anzahl der Treffer',0,3,1,2) +
+  UI.sl('k3n','n = Anzahl der Versuche',1,5,1,3) + UI.sl('k3p','p = Trefferwahrscheinlichkeit',0.05,0.95,0.05,0.5) + UI.sl('k3k','k = Anzahl der Treffer',0,3,1,2) +
   UI.chk('k3wrong','Fehlerweg: Binomialkoeffizient vergessen (nur einen Pfad zählen)') +
-  `<div class="row">${UI.btn('k3play','P(X ≤ k) Spalte für Spalte aufsummieren')}</div>` +
+  `<div class="row">${UI.btn('k3play','Pfade mit k Treffern abzählen')}</div>` +
   `<div class="eq col" id="k3eq"></div>` + UI.st('k3st') + UI.leg([['--va','Treffer'],['--line','Niete']]),
  init(){ const S = this; S.n = 3; S.p = 0.5; S.k = 2; S.wrong = false; S.lit = null;
   onSl('k3n', v => { S.n = v; $('k3k').max = v; if (S.k > v) S.k = v; S.lit = null; S.upd(); });
-  onSeg('k3K', i => S.preset(K3P[i])); $('k3KR').addEventListener('click', () => { const n = 2 + rnd(5); S.preset({n, p:[0.25,0.3,0.4,0.5,0.6,0.75][rnd(6)], k:rnd(n+1)}); });
+  onSeg('k3K', i => S.preset(K3P[i])); $('k3KR').addEventListener('click', () => { const n = 2 + rnd(4); S.preset({n, p:[0.25,0.3,0.4,0.5,0.6,0.75][rnd(6)], k:rnd(n+1)}); });
   onSl('k3p', v => { S.p = v; S.lit = null; S.upd(); }); onSl('k3k', v => { S.k = v; S.lit = null; S.upd(); });
   $('k3wrong').addEventListener('change', e => { S.wrong = e.target.checked; S.upd(); });
   $('k3play').addEventListener('click', () => S.play());
@@ -612,30 +612,33 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
   else stat('k3st', `Es gibt <b>${C}</b> Pfade mit genau ${k} Treffern (Spalte k = ${k}). Jeder hat die Wahrscheinlichkeit p${sup(k)} · (1 − p)${sup(n-k)}. Anzahl mal Pfadwert ergibt P(X = ${k}).`, 'ok');
  },
  draw(arr, c){
-  clear(); const S = this, {n,k} = S, w = (PL.R - PL.L) / (n+1), x = j => PL.L + (j+0.5) * w;
-  const groups = range(0,n).map(() => []);
-  for (let m = 0; m < (1 << n); m++) { const bits = []; let h = 0; for (let i = n-1; i >= 0; i--) { const b = (m >> i) & 1; bits.push(b); h += b; } groups[h].push(bits); }
-  // Ein einzelner Versuch: Balken mit Treffer-Anteil p und Nieten-Anteil 1 − p
-  const p = S.p, bx = 230, bw = 440, by = 22, bh = 24;
-  svg.append(T(bx-12, by+bh/2, 'Ein Versuch:', 't m', 'end', 13));
-  svg.append(el('rect', {x:bx, y:by, width:bw*p, height:bh, rx:5, class:'bar on'}));
-  svg.append(el('rect', {x:bx+bw*p, y:by, width:bw*(1-p), height:bh, rx:5, class:'bar dim'}));
-  svg.append(T(bx+bw*p/2, by+bh/2+1, `Treffer p = ${fmt(p,2)}`, 't nl', 'middle', 12));
-  svg.append(T(bx+bw*p+bw*(1-p)/2, by+bh/2+1, `Niete 1 − p = ${fmt(1-p,2)}`, 't', 'middle', 12));
-  svg.append(T(450, 66, `${n} Versuche hintereinander → ${1 << n} Pfade, sortiert nach Trefferzahl k`, 't m', 'middle', 12));
-  const maxC = Math.max(...groups.map(g => g.length)), rowH = Math.min(20, (438-128) / maxC), s = Math.min(16, (w-14) / n);
-  const litSet = S.lit == null ? [k] : range(0, S.lit);
-  for (let j = 0; j <= n; j++) {
-    const on = litSet.includes(j);
-    if (on) svg.append(el('rect', {x:x(j)-w/2+3, y:80, width:w-6, height:424, rx:8, class:'colbg'}));
-    svg.append(T(x(j), 96, `k = ${j}`, 't b')); svg.append(T(x(j), 114, `${groups[j].length} Pfad${groups[j].length === 1 ? '' : 'e'}`, 't m', 'middle', 12));
-    groups[j].forEach((bits, r) => { const y0 = 128 + r*rowH, x0 = x(j) - bits.length*s/2; bits.forEach((b,i) => svg.append(el('rect', {x:x0+i*s+1, y:y0, width:s-2, height:Math.max(3, Math.min(s-2, rowH-3)), rx:3, class:'chip' + (b ? ' T' : '')}))); });
-    svg.append(T(x(j), 458, `${choose(n,j)}·${fmt(S.p,2)}${sup(j)}·${fmt(1-S.p,2)}${sup(n-j)}`, 't mono m', 'middle', 11));
-    svg.append(T(x(j), 482, `P(X = ${j}) = ${fix(arr[j],4)}`, 't mono' + (on ? ' b' : ' m'), 'middle', 12));
+  clear(); const S = this, {n,k,p} = S, q = 1-p, C = choose(n,k), one = Math.pow(p,k) * Math.pow(q,n-k);
+  const L = 90, R = 780, T0 = 58, B0 = 498, H = B0 - T0, dx = (R-L)/n;
+  const y = (d,i) => T0 + (i + 0.5) * H / Math.pow(2,d);
+  // Blattindex: Bit = 0 heißt Treffer (nach oben), Bit = 1 heißt Niete (nach unten), höchstes Bit = 1. Stufe
+  const hits = idx => { let h = 0; for (let s = 0; s < n; s++) if (((idx >> (n-1-s)) & 1) === 0) h++; return h; };
+  const seq = idx => range(0,n-1).map(s => ((idx >> (n-1-s)) & 1) === 0 ? 'T' : 'N').join('');
+  const leaves = range(0, (1 << n) - 1), selIdx = leaves.filter(i => hits(i) === k);
+  const lit = new Set(S.lit == null ? selIdx : selIdx.slice(0, S.lit));
+  const litUnder = (d,i) => { const span = 1 << (n-d), from = i*span; for (let j = from; j < from+span; j++) if (lit.has(j)) return true; return false; };
+  svg.append(T(450, 26, `Jede Stufe: Treffer ↑ mit p = ${fmt(p,2)} (orange), Niete ↓ mit 1 − p = ${fmt(q,2)} (grau) · ${1 << n} Pfade · leuchtend: genau ${k} Treffer`, 't m', 'middle', 13));
+  for (let d = 0; d < n; d++) for (let i = 0; i < (1 << d); i++) {
+    const x1 = L + d*dx, x2 = L + (d+1)*dx, y1 = y(d,i);
+    [[2*i,'T'],[2*i+1,'N']].forEach(([ci,t]) => { const on = litUnder(d+1, ci), y2 = y(d+1,ci);
+      svg.append(el('line', {x1, y1, x2, y2, class:'edge' + (on ? (t === 'T' ? ' on' : '') : ' dim'), style: on && t === 'N' ? 'stroke-width:3.5' : ''}));
+      if (d < 2) svg.append(T((x1+x2)/2, (y1+y2)/2 + (t === 'T' ? -9 : 11), t === 'T' ? fmt(p,2) : fmt(q,2), 't mono' + (on ? ' b' : ' m'), 'middle', 12)); });
   }
-  svg.append(T(450, 528, S.lit != null ? `P(X ≤ ${S.lit}) = ${range(0,S.lit).map(i => fix(arr[i],4)).join(' + ')} = ${fix(cF(c,S.lit),4)}` : `Jede Zeile ist ein Pfad: orange = Treffer, grau = Niete · Spalte k = ${k} enthält ${choose(n,k)} Pfade`, 't' + (S.lit != null ? ' b' : ' m')));
+  const rN = Math.max(3, Math.min(9, H / Math.pow(2,n) * 0.32));
+  svg.append(el('circle', {cx:L, cy:y(0,0), r:9, class:'nd root'})); svg.append(T(L, y(0,0) - 18, 'Start', 't m', 'middle', 12));
+  for (let d = 1; d <= n; d++) for (let i = 0; i < (1 << d); i++) { const t = (i & 1) === 0 ? 'T' : 'N', on = litUnder(d, i);
+    svg.append(el('circle', {cx:L + d*dx, cy:y(d,i), r:rN, class: t === 'T' ? 'nd R' : 'nd', style: t === 'T' ? (on ? '' : 'opacity:.35') : `fill:var(--line);${on ? '' : 'opacity:.35'}`})); }
+  const fs = n <= 3 ? 13 : n === 4 ? 11 : 9;
+  leaves.forEach(i => { const on = lit.has(i), sel = hits(i) === k; svg.append(T(R + 12, y(n,i) + 1, seq(i) + (n <= 3 ? ` = ${fix(Math.pow(p,hits(i)) * Math.pow(q,n-hits(i)),4)}` : ''), 't mono' + (on ? ' b ca' : sel ? ' m' : ' m'), 'start', fs)); });
+  const cnt = S.lit == null ? C : Math.min(S.lit, C);
+  svg.append(T(450, 522, `${cnt} von ${C} Pfaden mit genau ${k} Treffern gezählt → Binomialkoeffizient (${n} über ${k}) = ${C}`, 't b', 'middle', 14));
+  svg.append(T(450, 544, `Jeder dieser Pfade: p${sup(k)} · (1 − p)${sup(n-k)} = ${fmt(p,2)}${sup(k)} · ${fmt(q,2)}${sup(n-k)} = ${fix(one,4)}  ⇒  P(X = ${k}) = ${C} · ${fix(one,4)} = ${fix(arr[k],4)}`, 't mono', 'middle', 13));
  },
- play(){ const S = this; stopAll(); S.lit = 0; S.upd(); for (let i = 1; i <= S.k; i++) later(900*i, () => { S.lit = i; S.upd(); }); }
+ play(){ const S = this; stopAll(); S.lit = 0; S.upd(); const C = choose(S.n, S.k); for (let i = 1; i <= C; i++) later(Math.max(250, 900 - 60*C)*i, () => { S.lit = i; S.upd(); }); }
 });
 
 // =====================================================================
