@@ -892,8 +892,9 @@ scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
   `<table class="kw">${KW.map(([t,id]) => `<tr><td>${t}</td><td><button data-go="${id}">Karte ${id.slice(1)}</button></td></tr>`).join('')}</table>` +
   `<div class="eq col">${cond('Blau = Regel, die immer gilt', undefined)}${cond('Grün = geprüft und erfüllt', true, 'Kontrolle')}${cond('Rot = verletzt, Vorsicht', false)}<span class="m">So sehen die Bedingungs-Chips auf jeder Karte aus. Im Aufgabentext: <mark class="kw neg" tabindex="0" data-tip="Umkehrwort">rot</mark> = Umkehrwort, <mark class="kw" tabindex="0" data-tip="Fachbegriff">orange</mark> = Fachbegriff.</span></div>` +
   `<p class="note">Vorgehen in der Klausur: Stichwort markieren, Karte im Kopf aufrufen, Formel erst mit Buchstaben, dann Zahlen einsetzen, Kontrolle (Summe = 1, Grenzen eingeschlossen?, Einheit im Antwortsatz).</p>` +
-  `<div><div class="lbl">Übungsklausuren zum Herunterladen (PDF)</div><div class="dl">` +
-  [['klausuren/Probeklausur_C.pdf','Probeklausur C','Urne ohne Zurücklegen · Glücksrad · n = 5 · B(12; 0,3) · Pakete · B(150; 0,2) · LED 99,7 %'],
+  `<div><div class="lbl">Einführung und Übungsklausuren (PDF)</div><div class="dl">` +
+  [['klausuren/Einfuehrung_Stochastik_und_App.pdf','Einführung: Thema und App','Worum es geht · der rote Faden · die Karten · Lernweg · Formeln auf einen Blick'],
+   ['klausuren/Probeklausur_C.pdf','Probeklausur C','Urne ohne Zurücklegen · Glücksrad · n = 5 · B(12; 0,3) · Pakete · B(150; 0,2) · LED 99,7 %'],
    ['klausuren/Probeklausur_D.pdf','Probeklausur D','Urne mit Zurücklegen · Lose · n = 4, p = 0,25 · B(10; 0,6) · Biathlon · B(200; 0,25) · Callcenter 68,3 %'],
    ['klausuren/Loesungen_Probeklausur_C_D.pdf','Lösungen C und D','Dreischritt Formel → Zahlen → Ergebnis, Bedingungen und Kontrollen markiert']]
    .map(([h,t,s]) => `<a class="dlitem" href="${h}" download><b>⬇ ${t}</b><span>${s}</span></a>`).join('') + `</div><p class="note">Gleicher Aufbau wie die Probeklausuren A und B: Teil A ohne Hilfsmittel (24 P), Teil B mit CAS (36 P). Zum Herunterladen ist einmal Internet nötig.</p></div>`,
