@@ -64,6 +64,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--vb);outline-off
 .eq.col{flex-direction:column;align-items:flex-start;gap:4px}
 .eq .m{color:var(--muted)}
 .eq sub,.eq sup{font-size:.72em}
+.cond{display:inline-flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;background:color-mix(in srgb,var(--vb) 18%,transparent);border-left:3px solid var(--vb);border-radius:6px;padding:3px 9px;font-weight:600;font-family:var(--f-mono);font-size:.82rem;line-height:1.5}
+.cond i{font-style:normal;font-size:.64rem;text-transform:uppercase;letter-spacing:.07em;color:var(--vb);font-weight:700;font-family:var(--f-body)}
+.cond.ok{background:color-mix(in srgb,var(--vr) 18%,transparent);border-color:var(--vr)} .cond.ok i{color:var(--vr)}
+.cond.bad{background:color-mix(in srgb,var(--hit) 18%,transparent);border-color:var(--hit)} .cond.bad i{color:var(--hit)}
+.steps .cond{font-size:.78rem}
 .sl{display:grid;grid-template-columns:1fr auto;gap:0 10px;font-size:.86rem}
 .sl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 .sl input{grid-column:1/-1;width:100%}
@@ -280,6 +285,8 @@ function onSl(id, cb){ $(id).addEventListener('input', e => { stopAll(); cb(+e.t
 function setSl(id, v, d=1){ $(id).value = v; $(id+'O').textContent = fmt(v,d); }
 function stat(id, html, cls=''){ const e = $(id); e.className = 'status ' + cls; e.innerHTML = html; }
 function lines(id, arr){ $(id).innerHTML = arr.map(l => `<div>${l}</div>`).join(''); }
+// Wichtige Bedingung als Chip: ohne Prüfung blau, erfüllt grün, verletzt rot
+const cond = (t, ok, label='Bedingung') => `<span class="cond${ok === true ? ' ok' : ok === false ? ' bad' : ''}"><i>${label}</i><span>${t}${ok === true ? ' ✓' : ok === false ? ' ✗' : ''}</span></span>`;
 function setSteps(id, i){ [...$(id).children].forEach((li,j) => { li.className = j < i-1 ? 'on' : j === i-1 ? 'cur' : ''; }); }
 
 // ---------- Schlüsselwörter in Aufgabentexten ----------
@@ -389,6 +396,8 @@ scene('k1', {card:'1', title:'Baumdiagramm & Pfadregeln', grp:'Grundlagen', hint
   if (selP.length > 1) L.push(`<span class="m">2. Pfadregel (addieren):</span> P(E) = P(Pfad₁) + P(Pfad₂) + … → P(${EVN[S.ev]}) = ${selP.map(q => 'P(' + q.key + ')').join(' + ')} = ${selP.map(q => frac(q.num,q.den)).join(' + ')} = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
   else L.push(`P(${EVN[S.ev]}) = P(${selP[0].key}) = <b>${frac(tot,den)}</b> ≈ ${fmt(tot/den,3)}`);
   if (S.ev === 2) { const bb = P[3]; L.push(`<span class="m">Gegenereignis:</span> P(E) = 1 − P(Ē) → P(mindestens eine rote) = 1 − P(BB) = 1 − ${frac(bb.num,den)} = ${frac(den-bb.num,den)}`); }
+  L.push(cond(S.mode === 0 ? `ohne Zurücklegen ⇒ 2. Zug: Nenner N − 1 = ${N-1}, Zähler der gezogenen Farbe − 1` : `mit Zurücklegen ⇒ Brüche in beiden Zügen gleich (Nenner N = ${N})`));
+  L.push(cond(`Summe aller Pfade = 1: ${P.map(q => frac(q.num,q.den)).join(' + ')} = ${frac(sum(P.map(q => q.num)),den)}`, sum(P.map(q => q.num)) === den, 'Kontrolle'));
   lines('k1eq', L);
   if (S.wrong && S.mode === 0) {
     const C = S.paths(false), ct = sum(sel.map(k => C.find(x => x.key === k).num));
@@ -493,12 +502,13 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
   const rows = D.map(d => { const c = [d.l, eur(d.pay), eur(d.k), `${d.f[0]}/${d.f[1]}`]; if (S.step >= 2) c.push(fmt(d.k*d.p,3)); if (S.step >= 3) c.push(fmt((d.k-mu)**2*d.p,3)); return c; });
   const foot = ['Summe','','','1']; if (S.step >= 2) foot.push('E(X) = ' + fmt(mu,3)); if (S.step >= 3) foot.push('Var = ' + fmt(va,3));
   $('k2tab').innerHTML = `<tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>` + rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('') + `<tr class="foot">${foot.map(c => `<td>${c}</td>`).join('')}</tr>`;
-  const L = [`<span class="m">Nettogewinn:</span> k = Auszahlung − Einsatz (${eur(S.e)})`];
-  if (S.step >= 2) L.push(`E(X) = Σ k · P(X = k) = k₁·P(X = k₁) + k₂·P(X = k₂) + k₃·P(X = k₃)`, `E(X) = ${D.map(d => `${fmt(d.k)}·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(mu,3)} €</b>`);
+  const L = [`<span class="m">Nettogewinn:</span> k = Auszahlung − Einsatz (${eur(S.e)})`, cond(`Σ P(X = k) = ${D.map(d => `${d.f[0]}/${d.f[1]}`).join(' + ')} = 1`, true, 'Kontrolle')];
+  if (S.step >= 2) L.push(`E(X) = Σ k · P(X = k) = k₁·P(X = k₁) + k₂·P(X = k₂) + k₃·P(X = k₃)`, `E(X) = ${D.map(d => `${fmt(d.k)}·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(mu,3)} €</b>`,
+    cond(`Fair ⇔ E(X) = 0 ⇔ Einsatz = E(Auszahlung): Im Mittel wird genauso viel eingezahlt wie ausgezahlt. Hier: Einsatz ${eur(S.e)}, mittlere Auszahlung E(Auszahlung) = ${D.map(d => `${d.pay}·${d.f[0]}/${d.f[1]}`).join(' + ')} = ${eur(sum(D.map(d => d.pay*d.p)))} → E(X) = ${fmt(mu,2)} € ${Math.abs(mu) < 1e-9 ? '= 0, das Spiel ist fair' : mu < 0 ? '< 0: es wird mehr eingezahlt als ausgezahlt, Nachteil für die Spielerin' : '> 0: es wird mehr ausgezahlt als eingezahlt, Vorteil für die Spielerin'}`, Math.abs(mu) < 1e-9 ? true : undefined, 'Fair?'));
   if (S.step >= 3) L.push(`Var(X) = Σ (k − μ)² · P(X = k)  mit μ = E(X)`, `Var(X) = ${D.map(d => `(${fmt(d.k)} − ${fmt(mu,2)})²·${d.f[0]}/${d.f[1]}`).join(' + ')} = <b>${fmt(va,3)}</b>`, `σ = √Var(X) = √${fmt(va,3)} = <b>${fmt(sd,3)} €</b>`);
   lines('k2eq', L);
   $('k2next').textContent = S.step === 1 ? 'Weiter: E(X) berechnen' : S.step === 2 ? 'Weiter: Var(X) und σ' : 'Von vorn';
-  if (S.fair) stat('k2st', `<b>Fairer Einsatz:</b> Bedingung E(X) = 0 ⇔ Einsatz = E(Auszahlung) = Σ Auszahlung · P = ${D.map(d => `${d.pay}·${d.f[0]}/${d.f[1]}`).join(' + ')} = ${eur(S.e)}. Dann gewinnt und verliert auf lange Sicht niemand.`, 'ok');
+  if (S.fair) stat('k2st', `<b>Fairer Einsatz:</b> Fair heißt, im Mittel wird genauso viel eingezahlt wie ausgezahlt: Einsatz = E(Auszahlung) = Σ Auszahlung · P = ${D.map(d => `${d.pay}·${d.f[0]}/${d.f[1]}`).join(' + ')} = ${eur(S.e)}. Dann ist E(X) = 0, auf lange Sicht gewinnt und verliert niemand.`, 'ok');
   else if (S.step === 1) stat('k2st', 'Schritt 1: Alle möglichen Nettogewinne k mit ihren Wahrscheinlichkeiten in eine Tabelle schreiben. Kontrolle: Die Wahrscheinlichkeiten addieren sich zu 1.');
   else stat('k2st', Math.abs(mu) < 1e-9 ? `<b>E(X) = 0:</b> Das Spiel ist fair.`
     : mu < 0 ? `<b>E(X) = ${fmt(mu,2)} €:</b> Pro Spiel verliert die Spielerin auf lange Sicht im Mittel ${eur(-mu)}. Das Spiel ist nicht fair, der Anbieter ist im Vorteil.`
@@ -554,7 +564,8 @@ scene('k3', {card:'3', title:'Bernoulli-Formel von Hand', grp:'Grundlagen', hint
    `<span class="m">Ein Pfad mit k Treffern:</span> p<sup>k</sup> · (1 − p)<sup>n−k</sup> = ${fmt(p,2)}${sup(k)} · ${fmt(q,2)}${sup(n-k)} = ${fix(one,4)}`,
    `<span class="m">Bernoulli-Formel:</span> P(X = k) = (n über k) · p<sup>k</sup> · (1 − p)<sup>n−k</sup> → P(X = ${k}) = ${C} · ${fix(one,4)} = <b>${fix(arr[k],4)}</b>`,
    `<span class="m">Summe:</span> P(X ≤ k) = P(X = 0) + P(X = 1) + … + P(X = k) → P(X ≤ ${k}) = ${range(0,k).map(i => `P(X = ${i})`).join(' + ')} = ${range(0,k).map(i => fix(arr[i],4)).join(' + ')} = <b>${fix(cF(c,k),4)}</b>`,
-   `<span class="m">F-Schreibweise:</span> P(X = ${k}) = ${Bs(n,p)}(${k}) ; P(X ≤ ${k}) = ${Fs(n,p)}(${k}) = ${fix(cF(c,k),4)}`
+   `<span class="m">F-Schreibweise:</span> P(X = ${k}) = ${Bs(n,p)}(${k}) ; P(X ≤ ${k}) = ${Fs(n,p)}(${k}) = ${fix(cF(c,k),4)}`,
+   cond('Bernoulli-Kette ⇔ n fest · nur Treffer/Niete · p in jedem Versuch gleich · Versuche unabhängig')
   ]);
   if (S.wrong) stat('k3st', `<b>Fehlerweg.</b> Ohne den Binomialkoeffizienten zählst du nur <em>einen</em> der ${C} Pfade mit ${k} Treffern: ${fix(one,4)} statt ${C} · ${fix(one,4)} = ${fix(arr[k],4)}. Jeder Pfad in der Spalte ist gleich wahrscheinlich, deshalb wird mit der Anzahl der Pfade multipliziert.`, 'bad');
   else stat('k3st', `Es gibt <b>${C}</b> Pfade mit genau ${k} Treffern (Spalte k = ${k}). Jeder hat die Wahrscheinlichkeit p${sup(k)} · (1 − p)${sup(n-k)}. Anzahl mal Pfadwert ergibt P(X = ${k}).`, 'ok');
@@ -632,7 +643,7 @@ scene('k4', {card:'4', title:'Diagramm & Tabelle ablesen', grp:'Binomialverteilu
    `<span class="cb">P(X &lt; ${k})</span> = P(X ≤ ${fmt(k-1,0)}) = ${F}(${fmt(k-1,0)}) = <b>${fix(lt,4)}</b>`,
    `<span class="ca">P(X = ${k})</span> = ${F}(${k}) − ${F}(${fmt(k-1,0)}) = ${fix(cF(c,k),4)} − ${fix(lt,4)} = <b>${fix(eq,4)}</b>`,
    `<span class="cr">P(X &gt; ${k})</span> = 1 − ${F}(${k}) = 1 − ${fix(cF(c,k),4)} = <b>${fix(gt,4)}</b>`,
-   `<span class="m">Kontrolle: ${fix(lt,4)} + ${fix(eq,4)} + ${fix(gt,4)} = ${fix(lt+eq+gt,4)}</span>`
+   cond(`P(X &lt; k) + P(X = k) + P(X &gt; k) = 1: ${fix(lt,4)} + ${fix(eq,4)} + ${fix(gt,4)} = ${fix(lt+eq+gt,4)}`, Math.abs(lt+eq+gt-1) < 1e-6, 'Kontrolle')
   ]);
   if (n <= 15) { $('k4tw').hidden = false;
     $('k4tab').innerHTML = `<tr><th>k</th><th>P(X = k)</th><th>P(X ≤ k)</th></tr>` +
@@ -694,7 +705,9 @@ scene('k5', {card:'5', title:'Mindestens, höchstens, mehr als …', grp:'Binomi
    `<span class="m">Allgemein:</span> ${['P(X = k) = F(k) − F(k − 1)', 'P(X ≥ k) = 1 − F(k − 1)', 'P(X ≤ k) = F(k)', 'P(X &gt; k) = 1 − F(k)', 'P(X &lt; k) = F(k − 1)', 'P(k ≤ X &lt; k₂) = F(k₂ − 1) − F(k − 1)'][m]}  (immer: P(a ≤ X ≤ b) = F(b) − F(a − 1))`,
    `<span class="m">Eingesetzt:</span> ${evF(m,k,k2,F)} = ${aa > bb ? '0' : `${fix(cF(c,bb),4)} − ${fix(cF(c,aa-1),4)}`}`,
    `<span class="m">Wert (CAS, 4 Dezimalen):</span> <b>${fix(P,4)}</b>`,
-   `<span class="m">CAS-Befehl:</span> binomCdf(${n}, ${fmt(p,2)}, ${aa}, ${bb})${m === 0 ? ` bzw. binomPdf(${n}, ${fmt(p,2)}, ${k})` : ''}`
+   `<span class="m">CAS-Befehl:</span> binomCdf(${n}, ${fmt(p,2)}, ${aa}, ${bb})${m === 0 ? ` bzw. binomPdf(${n}, ${fmt(p,2)}, ${k})` : ''}`,
+   cond(m === 1 || m === 2 ? `„${MODES[m].split(' ')[0]}“ schließt die Grenze k = ${k} EIN` : m === 3 || m === 4 ? `„${MODES[m].replace(' k','')}“ schließt die Grenze k = ${k} AUS` : m === 5 ? `k = ${k} eingeschlossen, k₂ = ${k2} ausgeschlossen` : `nur die eine Säule k = ${k}`, undefined, 'Grenze'),
+   cond('Binomialverteilung nur, wenn: n fest · Treffer/Niete · p gleich · unabhängig')
   ]);
   if (S.wrong && m !== 0) {
     const [wa,wb] = wrongSet(m,n,k,k2), wp = pRange(c,wa,wb);
@@ -736,7 +749,9 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
    `μ = n · p = ${n} · ${fmt(p,3)} = <b>${fmt(mu,2)}</b>`,
    `σ = √(n · p · (1 − p)) = √(${n} · ${fmt(p,3)} · ${fmt(1-p,3)}) = √${fmt(n*p*(1-p),3)} = <b>${fmt(sd,3)}</b>`,
    `<span class="m">${z}σ-Umgebung:</span> [μ − zσ ; μ + zσ] = [${fmt(mu,2)} − ${z}·${fmt(sd,3)} ; ${fmt(mu,2)} + ${z}·${fmt(sd,3)}] = [${fmt(r.lo,2)} ; ${fmt(r.hi,2)}] → nach innen gerundet [${r.a} ; ${r.b}]`,
-   `<span class="m">Wahrscheinlichkeit:</span> P(a ≤ X ≤ b) = F(b) − F(a − 1) → P(${r.a} ≤ X ≤ ${r.b}) = ${Fs(n,p)}(${r.b}) − ${Fs(n,p)}(${fmt(r.a-1,0)}) = ${fix(cF(c,r.b),4)} − ${fix(cF(c,r.a-1),4)} = <b>${fix(r.P,4)}</b> ≈ ${pct(r.P,1)}`
+   `<span class="m">Wahrscheinlichkeit:</span> P(a ≤ X ≤ b) = F(b) − F(a − 1) → P(${r.a} ≤ X ≤ ${r.b}) = ${Fs(n,p)}(${r.b}) − ${Fs(n,p)}(${fmt(r.a-1,0)}) = ${fix(cF(c,r.b),4)} − ${fix(cF(c,r.a-1),4)} = <b>${fix(r.P,4)}</b> ≈ ${pct(r.P,1)}`,
+   cond(`Laplace-Bedingung σ > 3: σ = ${fmt(sd,2)}`, sd > 3),
+   cond('Grenzen mit ungerundetem σ berechnen, erst dann nach innen runden (unten auf-, oben abrunden)')
   ]);
   $('k6tab').innerHTML = `<tr><th>z</th><th>μ ± zσ</th><th>gerundet</th><th>P tatsächlich</th><th>Regel</th></tr>` +
     R.map(q => `<tr class="${q.z === z ? 'h1' : ''}"><td>${q.z}σ</td><td>${fmt(q.lo,2)} … ${fmt(q.hi,2)}</td><td>${q.a} … ${q.b}</td><td>${pct(q.P,1)}</td><td>${pct(q.rule,1)}</td></tr>`).join('');
@@ -790,9 +805,9 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
   const F = Fs(n,p);
   $('k7steps').innerHTML = [
    `Zufallsgröße: X = ${C.X}. X ist binomialverteilt mit n = ${n} und p = ${fmt(p,2)} (fest n, nur Treffer/Niete, gleiches p, unabhängig).`,
-   `<span class="m">μ = n · p = ${n} · ${fmt(p,2)} = ${fmt(mu,2)} ; σ = √(n · p · (1 − p)) = √(${n} · ${fmt(p,2)} · ${fmt(1-p,2)}) = √${fmt(n*p*(1-p),3)} ≈ ${fmt(sd,3)}</span> ${sd > 3 ? '· σ &gt; 3 ✓ Sigma-Regel anwendbar' : '· σ ≤ 3, Sigma-Regel nur grob'}`,
+   `<span class="m">μ = n · p = ${n} · ${fmt(p,2)} = ${fmt(mu,2)} ; σ = √(n · p · (1 − p)) = √(${n} · ${fmt(p,2)} · ${fmt(1-p,2)}) = √${fmt(n*p*(1-p),3)} ≈ ${fmt(sd,3)}</span> ${cond(`σ > 3 (Laplace), sonst Sigma-Regel nur grob: σ = ${fmt(sd,2)}`, sd > 3)}`,
    `${rule}-Bereich mit ungerundeten Werten: <span class="m">[μ − zσ ; μ + zσ] = [${fmt(mu,2)} − ${z}·${fmt(sd,3)} ; ${fmt(mu,2)} + ${z}·${fmt(sd,3)}] = [${fmt(lo,2)} ; ${fmt(hi,2)}]</span>`,
-   `Nach innen auf ganze Zahlen runden: <span class="m">a = ⌈${fmt(lo,2)}⌉ = ${a}, b = ⌊${fmt(hi,2)}⌋ = ${b} → ${a} ≤ X ≤ ${b}</span>`,
+   `Nach innen auf ganze Zahlen runden: <span class="m">a = ⌈${fmt(lo,2)}⌉ = ${a}, b = ⌊${fmt(hi,2)}⌋ = ${b} → ${a} ≤ X ≤ ${b}</span> ${cond('Grenzen mit ungerundetem σ, unten auf-, oben abrunden')}`,
    `Im Sachzusammenhang: „${C.s(a,b,rule)}“`,
    `Mit dem CAS: <span class="m">P(a ≤ X ≤ b) = F(b) − F(a − 1) → P(${a} ≤ X ≤ ${b}) = ${F}(${b}) − ${F}(${fmt(a-1,0)}) = ${fix(cF(c,b),4)} − ${fix(cF(c,a-1),4)} = ${fix(P,4)} ≈ ${pct(P,2)}</span> ; außerhalb: <span class="m">P(außerhalb) = 1 − P(innen) = 1 − ${fix(P,4)} = ${fix(1-P,4)} ≈ ${pct(1-P,2)}</span>`
   ].map(t => `<li>${t}</li>`).join('');
