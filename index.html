@@ -152,6 +152,9 @@ mark.kw:hover::after,mark.kw:focus::after{content:attr(data-tip);position:absolu
 mark.kw.neg{background:color-mix(in srgb,var(--hit) 24%,transparent);border-bottom-color:var(--hit);font-weight:700}
 mark.kw.neg:hover,mark.kw.neg:focus{background:color-mix(in srgb,var(--hit) 42%,transparent)}
 .colbg{fill:var(--va);opacity:.12}
+.merk{font-size:.92rem;padding:10px 12px;border-radius:8px;background:color-mix(in srgb,var(--va) 14%,transparent);border-left:4px solid var(--va);line-height:1.5}
+.merk.s{font-size:.82rem;padding:6px 10px}
+.merk button{font:inherit;font-size:.78rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:1px 7px;margin-left:4px;cursor:pointer}
 @media (max-width:1180px){main{grid-template-columns:minmax(0,1fr) 360px}nav{grid-column:1/-1;flex-direction:row;overflow-x:auto;padding:8px}nav .grp{flex-direction:row;align-items:center;flex:none}nav button{white-space:nowrap}}
 @media (max-width:860px){main{grid-template-columns:minmax(0,1fr)}.mid{display:contents}.stage{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;aspect-ratio:auto;height:clamp(240px,42vh,420px);box-shadow:0 6px 14px -10px rgba(0,0,0,.35)}.hint{display:none}}
 </style>
@@ -244,8 +247,11 @@ function drawBand(H, mu, sd, z, a, b, label, tails){
   [x1, x2].forEach(x => svg.append(el('line', {x1:x, x2:x, y1:PL.T, y2:PL.B, class:'bnd'})));
   svg.append(el('line', {x1:H.xv(mu), x2:H.xv(mu), y1:PL.T-6, y2:PL.B, class:'mu'}));
   svg.append(T(H.xv(mu), PL.T-18, `μ = ${fmt(mu,2)}`, 't b ch'));
-  svg.append(T(x1-5, PL.T+12, `μ − ${z}σ = ${fmt(mu-z*sd,2)}`, 't mono ca', 'end', 12));
-  svg.append(T(x2+5, PL.T+12, `μ + ${z}σ = ${fmt(mu+z*sd,2)}`, 't mono ca', 'start', 12));
+  // Grenzbeschriftungen: passt eine nicht ins Bild (p nahe 0 oder 1), auf die freie Seite unter die andere setzen
+  const lt = `μ − ${z}σ = ${fmt(mu-z*sd,2)}`, rt = `μ + ${z}σ = ${fmt(mu+z*sd,2)}`, cw = 7.3;
+  const lOut = x1 - 5 - lt.length*cw < 4, rOut = x2 + 5 + rt.length*cw > 896;
+  svg.append(T(lOut ? x2+5 : x1-5, lOut ? PL.T+50 : PL.T+12, lt, 't mono ca', lOut ? 'start' : 'end', 12));
+  svg.append(T(rOut ? x1-5 : x2+5, rOut ? PL.T+50 : PL.T+12, rt, 't mono ca', rOut ? 'end' : 'start', 12));
   // Klammer unter der Achse: die nach innen gerundete Umgebung a … b
   bracket(H.x(a) - H.w*0.4, H.x(b) + H.w*0.4, PL.B+28, label, '--va');
   if (tails) { const ty = PL.T + 32;
@@ -258,7 +264,8 @@ function drawBand(H, mu, sd, z, a, b, label, tails){
 function bracket(x1, x2, y, label, col, dy=15, up=false){
   const arm = up ? 7 : -7;
   svg.append(el('path', {d:`M ${x1} ${y+arm} L ${x1} ${y} L ${x2} ${y} L ${x2} ${y+arm}`, style:`fill:none;stroke:var(${col});stroke-width:2`}));
-  svg.append(T((x1+x2)/2, up ? y-12 : y+dy, label, 't b', 'middle', 13, col));
+  const hw = label.length * 3.6, cx = Math.min(Math.max((x1+x2)/2, 4 + hw), 896 - hw);
+  svg.append(T(cx, up ? y-12 : y+dy, label, 't b', 'middle', 13, col));
 }
 
 // Urne mit Kugeln: r rote, b blaue; gone = Farbe der gerade entnommenen Kugel (als leerer Platz gezeigt)
@@ -354,9 +361,12 @@ const KWS = [
  [/1σ-, 2σ- und 3σ-Umgebung|σ-Umgebung(?:en)?/, '[μ − zσ ; μ + zσ] mit ungerundetem σ berechnen, dann nach innen auf ganze Zahlen runden.'],
  [/nach innen/, 'Untere Grenze aufrunden, obere Grenze abrunden – nur ganze Trefferzahlen zählen.'],
  [/68,3 %, 95,4 % und 99,7 %/, 'Faustregel für 1σ / 2σ / 3σ, verlässlich bei σ > 3 (Laplace-Bedingung).'],
- [/ungefähr in [\d,]+ % (?:der|solcher) \w+/, 'Die Prozentzahl verrät die Umgebung: 68,3 % → 1σ, 95,4 % → 2σ, 99,7 % → 3σ.'],
+ [/ungefähr in [\d,]+ % (?:der|solcher) [\wäöüß]+/, 'Die Prozentzahl verrät die Umgebung: 68,3 % → 1σ, 95,4 % → 2σ, 99,7 % → 3σ.'],
  [/Bereich angeben|Gesucht ist ein Bereich/, 'Gesucht ist ein Intervall von Trefferzahlen, kein einzelner Wert – Antwort im Sachzusammenhang.'],
- [/μ und σ/, 'μ = n · p, σ = √(n · p · (1 − p)).']
+ [/μ und σ/, 'μ = n · p, σ = √(n · p · (1 − p)) bei der Binomialverteilung; bei einer Liste von Werten: μ = Summe / Anzahl, σ = √(Σ (xᵢ − μ)² / n).'],
+ [/Durchschnitt|im Mittel/, 'Mittelwert μ = Summe aller Werte / Anzahl. Sagt NICHT, wie stark die Werte streuen – dafür braucht man σ.'],
+ [/Standardabweichung/, 'σ = typischer Abstand eines Wertes vom Durchschnitt: σ = √(Σ (xᵢ − μ)² / n).'],
+ [/fast immer pünktlich|Sitzplätze sie wirklich braucht/, 'Gesucht ist ein Wert mit Sicherheitspuffer: nicht μ, sondern μ + z · σ.']
 ];
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const kwOpen = new Set();
@@ -537,7 +547,7 @@ scene('k2', {card:'2', title:'Zufallsgröße & Erwartungswert', grp:'Grundlagen'
   klausurUI('k2K') + UI.seg('k2g', GAMES.map(g => g.name)) + `<div class="task" id="k2task"></div>` + UI.sl('k2e','Einsatz pro Spiel in €',0,10,0.5,3) +
   `<div class="tscroll"><table class="dist" id="k2tab"></table></div>` +
   `<div class="row">${UI.btn('k2next','Weiter')}${UI.btn('k2fair','Fairen Einsatz finden',true)}</div>` +
-  `<div class="eq col" id="k2eq"></div>` + UI.st('k2st'),
+  `<div class="eq col" id="k2eq"></div>` + `<div class="merk s"><b>Merksatz:</b> μ sagt, was man erwarten kann. σ sagt, wie sehr man sich darauf verlassen kann.<button type="button" data-goto="k10">Alltag: Karte 10</button></div>` + UI.st('k2st'),
  init(){ const S = this; S.g = 0; S.e = 3; S.step = 1; S.fair = false;
   onSeg('k2g', v => { S.g = v; S.e = GAMES[v].e; S.step = 1; S.fair = false; S.upd(); });
   onSeg('k2K', i => { S.g = i; S.e = GAMES[i].e; S.step = 1; S.fair = false; setSeg('k2g', i); S.upd(); });
@@ -796,7 +806,7 @@ scene('k6', {card:'6', title:'Sigma-Umgebungen vergleichen', grp:'Binomialvertei
   UI.sl('k6n','n',10,200,1,100) + UI.sl('k6p','p',0.05,0.95,0.01,0.5) +
   `<div><div class="lbl">Umgebung</div>${UI.seg('k6z', ['1σ (≈ 68,3 %)','2σ (≈ 95,4 %)','3σ (≈ 99,7 %)'])}</div>` +
   `<div class="row">${UI.btn('k6all','Alle drei durchlaufen')}</div>` +
-  `<div class="eq col" id="k6eq"></div>` + `<div class="tscroll"><table class="dist" id="k6tab"></table></div>` + UI.st('k6st'),
+  `<div class="eq col" id="k6eq"></div>` + `<div class="merk s"><b>Merksatz:</b> μ sagt, was man erwarten kann. σ sagt, wie sehr man sich darauf verlassen kann.<button type="button" data-goto="k10">Alltag: Karte 10</button></div>` + `<div class="tscroll"><table class="dist" id="k6tab"></table></div>` + UI.st('k6st'),
  init(){ const S = this; S.n = 100; S.p = 0.5; S.z = 1; S.pre = 0;
   onSeg('k6K', i => S.preset(Object.assign({pre:i}, K6P[i])));
   $('k6KR').addEventListener('click', () => S.preset({n:10 + rnd(191), p:(5 + rnd(91)) / 100, z:1 + rnd(3), pre:-1}));
@@ -850,6 +860,9 @@ const CTX = [
  {name:'Callcenter (Klausur D)', n:90, p:0.3, z:1, X:'Anzahl der Vertragsabschlüsse bei 90 Anrufen', unit:['Anruf führt zum Abschluss','Anrufe führen zum Abschluss'], scene:(n,p) => `Callcenter: ${n} Anrufe, jeder führt unabhängig mit p = ${fmt(p,2)} zum Abschluss`,
   task:(n,p,pc) => `In einem Callcenter führt jeder Anruf unabhängig mit Wahrscheinlichkeit ${fmt(p,2)} zu einem Vertragsabschluss. An einem Tag werden ${n} Anrufe geführt. Die Teamleiterin möchte einen Bereich angeben, in dem die Zahl der Abschlüsse ungefähr in ${pc} der Tage liegt.`,
   s:(a,b,pc) => `An etwa ${pc} der Tage kommen zwischen ${a} und ${b} Vertragsabschlüsse bei 90 Anrufen zustande.`},
+ {name:'Überbuchter Flug (Alltag)', n:180, p:0.9, z:3, X:'Anzahl der Fluggäste, die zum Flug erscheinen', unit:['Fluggast erscheint','Fluggäste erscheinen'], scene:(n,p) => `Flug: ${n} Tickets verkauft, jeder Fluggast erscheint unabhängig mit p = ${fmt(p,2)}`,
+  task:(n,p,pc) => `Eine Fluggesellschaft verkauft für einen Flug ${n} Tickets. Jeder Fluggast erscheint unabhängig mit Wahrscheinlichkeit ${fmt(p,2)}. Die Airline möchte einen Bereich angeben, in dem die Zahl der erscheinenden Fluggäste ungefähr in ${pc} der Flüge liegt, und wissen, wie viele Sitzplätze sie wirklich braucht.`,
+  s:(a,b,pc) => `Bei etwa ${pc} der Flüge erscheinen zwischen ${a} und ${b} der 180 Fluggäste. Ein Flugzeug mit ${b} Sitzplätzen reicht also fast immer, obwohl 180 Tickets verkauft wurden. So funktioniert Überbuchen.`},
  {name:'Eigener Kontext', n:50, p:0.3, X:'Anzahl der Treffer', unit:['Treffer','Treffer'], scene:(n,p) => `${n} Versuche, jeder trifft unabhängig mit p = ${fmt(p,2)}`,
   task:(n,p,pc) => `Ein Zufallsversuch mit Trefferwahrscheinlichkeit ${fmt(p,2)} wird ${n}-mal unabhängig wiederholt. Gesucht ist ein Bereich, in dem die Trefferzahl ungefähr in ${pc} der Durchgänge liegt.`,
   s:(a,b,pc) => `In etwa ${pc} der Durchgänge liegt die Trefferzahl zwischen ${a} und ${b}.`}
@@ -859,7 +872,7 @@ scene('k7', {card:'7', title:'Erwartete Schwankungen im Alltag', grp:'Binomialve
   UI.seg('k7c', CTX.map(c => c.name)) + `<div class="task" id="k7task"></div>` + `<div id="k7own">${UI.sl('k7n','n',10,200,1,50)}${UI.sl('k7p','p',0.05,0.95,0.01,0.3)}</div>` +
   `<div><div class="lbl">Gewünschte Sicherheit</div>${UI.seg('k7z', ['≈ 68,3 % (1σ)','≈ 95,4 % (2σ)','≈ 99,7 % (3σ)'], 1)}</div>` +
   `<div class="row">${UI.btn('k7play','Rezept Schritt für Schritt')}${UI.btn('k7rand','Zufällige Aufgabe',true)}</div>` +
-  `<ol class="steps" id="k7steps"></ol>` + UI.st('k7st'),
+  `<ol class="steps" id="k7steps"></ol>` + UI.st('k7st') + `<div class="merk s"><b>Merksatz:</b> μ sagt, was man erwarten kann. σ sagt, wie sehr man sich darauf verlassen kann.<button type="button" data-goto="k10">Alltag: Karte 10</button></div>`,
  init(){ const S = this; S.c = 0; S.n = 50; S.p = 0.3; S.z = 2; S.step = 6;
   onSeg('k7c', v => { S.c = v; if (CTX[v].z) { S.z = CTX[v].z; setSeg('k7z', S.z-1); } S.step = 6; S.upd(); }); onSl('k7n', v => { S.n = v; S.upd(); }); onSl('k7p', v => { S.p = v; S.upd(); });
   $('k7rand').addEventListener('click', () => { S.c = CTX.length-1; S.n = 10 + rnd(191); S.p = (5 + rnd(91)) / 100; S.z = 1 + rnd(3); setSeg('k7c', S.c); setSeg('k7z', S.z-1); S.step = 6; S.upd(); });
@@ -903,7 +916,7 @@ const DL = [['klausuren/Einfuehrung_Stochastik_und_App.pdf','Einführung: Thema 
    ['klausuren/Probeklausur_C.pdf','Probeklausur C','Urne ohne Zurücklegen · Glücksrad · n = 5 · B(12; 0,3) · Pakete · B(150; 0,2) · LED 99,7 %'],
    ['klausuren/Probeklausur_D.pdf','Probeklausur D','Urne mit Zurücklegen · Lose · n = 4, p = 0,25 · B(10; 0,6) · Biathlon · B(200; 0,25) · Callcenter 68,3 %'],
    ['klausuren/Loesungen_Probeklausur_C_D.pdf','Lösungen C und D','Dreischritt Formel → Zahlen → Ergebnis, Bedingungen und Kontrollen markiert']];
-const KW = [['Klausur-Training: erst die Zielformel, dann die Elemente im Text finden','k9'],['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufallsgröße, Nettogewinn, Erwartungswert, fairer Einsatz, Varianz, σ','k2'],['Bernoulli-Kette, Binomialkoeffizient, „von Hand“, Bernoulli-Formel','k3'],['Diagramm ablesen, Tabelle, kumuliert, F-Schreibweise, B<sub>n;p</sub>(k)','k4'],['genau / mindestens / höchstens / mehr als / weniger als, Modellannahmen','k5'],['Sigma-Umgebung, μ und σ, 68,3 % / 95,4 % / 99,7 % vergleichen','k6'],['Bereich im Sachzusammenhang, „in 95,4 % der Fälle“, erwartete Schwankung','k7']];
+const KW = [['Klausur-Training: erst die Zielformel, dann die Elemente im Text finden','k9'],['Urne, Baumdiagramm, ohne Zurücklegen, Pfadregeln','k1'],['Zufallsgröße, Nettogewinn, Erwartungswert, fairer Einsatz, Varianz, σ','k2'],['Bernoulli-Kette, Binomialkoeffizient, „von Hand“, Bernoulli-Formel','k3'],['Diagramm ablesen, Tabelle, kumuliert, F-Schreibweise, B<sub>n;p</sub>(k)','k4'],['genau / mindestens / höchstens / mehr als / weniger als, Modellannahmen','k5'],['Sigma-Umgebung, μ und σ, 68,3 % / 95,4 % / 99,7 % vergleichen','k6'],['Bereich im Sachzusammenhang, „in 95,4 % der Fälle“, erwartete Schwankung, überbuchter Flug','k7'],['Wozu σ? Durchschnitt, Streuung, Merksatz, Kopf im Ofen, Schulweg mit Puffer','k10']];
 scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
  html: UI.q('Welches Stichwort steht in der Aufgabe – und was frage ich mich, bevor ich rechne?') +
   `<div class="task"><b>Lesefahrplan vor jeder Rechnung:</b><ol class="steps" style="margin-top:6px">` +
@@ -921,7 +934,7 @@ scene('k8', {card:'8', title:'Welche Karte?', grp:'Überblick', hint:'',
     svg.append(el('circle', {cx:130, cy:y+3, r:20, class:'nd root'})); svg.append(T(130, y+4, n, 't nl', 'middle', 18));
     svg.append(T(170, y-6, q, 't b', 'start', 18)); svg.append(T(170, y+18, a, 't m', 'start', 14));
     if (i < steps.length-1) svg.append(el('line', {x1:130, y1:y+36, x2:130, y2:y+56, class:'edge'})); });
-  svg.append(T(450, 520, 'Teil A ohne Hilfsmittel: Karten 1–3 · Teil B mit CAS: Karten 4–7', 't m', 'middle', 14));
+  svg.append(T(450, 520, 'Teil A ohne Hilfsmittel: Karten 1–3 · Teil B mit CAS: Karten 4–7 · Alltag: Karte 10', 't m', 'middle', 14));
  }
 });
 
@@ -1083,6 +1096,129 @@ scene('k9', {card:'9', title:'Zielformel zuerst', grp:'Training', hint:'Links di
     svg.append(el('rect', {x:120, y:290 + txt.length*34 + 10, width:660, height:50, rx:10, class:'colbg'})); svg.append(T_(450, 290 + txt.length*34 + 36, R.result, 't b', 'middle', 18)); }
  }
 });
+// =====================================================================
+// Karte 10: Wozu σ? Gleicher Durchschnitt, ganz andere Lage
+// =====================================================================
+const MERK = `<div class="merk"><b>Merksatz:</b> μ sagt, <i>was man erwarten kann</i>. σ sagt, <i>wie sehr man sich darauf verlassen kann</i>.</div>`;
+const ALLTAG = [
+ {name:'Kopf im Ofen, Füße im Kühlschrank', unit:'°C', lo:0, hi:80, tick:10,
+  G:[{name:'Herr Ofen', col:'--hit', vals:[70,4], labs:['Kopf im Backofen','Füße im Kühlschrank']},
+     {name:'Frau Normal', col:'--vr', vals:[38,36], labs:['Kopf','Füße']}],
+  task:`Herr Ofen liegt mit dem Kopf im Backofen (70 °C) und mit den Füßen im Kühlschrank (4 °C). Frau Normal liegt auf dem Sofa: Kopf 38 °C, Füße 36 °C. Im Durchschnitt haben beide 37 °C, also ganz normale Körpertemperatur. Berechne für beide μ und σ. Geht es beiden gut?`},
+ {name:'Schulweg: zwei Buslinien', unit:'min', lo:10, hi:35, tick:5,
+  G:[{name:'Linie 7', col:'--vb', vals:[18,19,20,20,21,22,20,19,21,20]},
+     {name:'Linie 12', col:'--vc', vals:[12,14,15,17,18,20,22,25,27,30]}],
+  task:`Du musst um 8:00 in der Schule sein. An 10 Tagen wurden die Fahrzeiten zweier Buslinien in Minuten notiert. Linie 7: 18, 19, 20, 20, 21, 22, 20, 19, 21, 20. Linie 12: 12, 14, 15, 17, 18, 20, 22, 25, 27, 30. Berechne für beide Linien den Durchschnitt μ und die Standardabweichung σ. Wie viel Fahrzeit solltest du einplanen, damit du fast immer pünktlich bist?`}
+];
+const stats = vals => { const n = vals.length, s = sum(vals), mu = s/n, ss = sum(vals.map(v => (v-mu)**2)), va = ss/n; return {n, s, mu, ss, va, sd: Math.sqrt(va)}; };
+const clock = minsBefore8 => { const t = 480 - minsBefore8; return `${Math.floor(t/60)}:${String(t % 60).padStart(2,'0')}`; };
+scene('k10', {card:'10', title:'Wozu σ? Durchschnitt allein reicht nicht', grp:'Alltag', hint:'Rote Linie: Durchschnitt μ · orange Klammer: μ ± σ · grün: eingeplante Fahrzeit · rote Punkte: zu spät',
+ html: UI.q('Zwei Situationen haben denselben Durchschnitt. Warum ist die eine harmlos und die andere nicht?') + MERK +
+  UI.seg('k10s', ALLTAG.map(a => a.name)) + `<div class="task" id="k10task"></div>` +
+  `<div id="k10zW"><div class="lbl">Wie viel Puffer planst du ein?</div>${UI.seg('k10z', ['nur μ','μ + 1σ','μ + 2σ'], 2)}</div>` +
+  `<div class="row">${UI.btn('k10next','σ aufdecken')}${UI.btn('k10fl','Noch ein Alltagsbeispiel: überbuchter Flug (Karte 7)',true)}</div>` +
+  `<div class="eq col" id="k10eq"></div>` + UI.st('k10st'),
+ init(){ const S = this; S.s = 0; S.step = 1; S.z = 2;
+  onSeg('k10s', v => { S.s = v; S.step = 1; S.upd(); });
+  onSeg('k10z', v => { S.z = v; S.upd(); });
+  $('k10next').addEventListener('click', () => { S.step = S.step === 1 ? 2 : 1; S.upd(); });
+  $('k10fl').addEventListener('click', () => { go('k7'); scenes.k7.preset({c:4, z:3}); });
+ },
+ show(){ this.upd(); },
+ upd(){
+  const S = this, A = ALLTAG[S.s], bus = S.s === 1, u = A.unit, st = A.G.map(g => stats(g.vals)), z = S.step === 2 ? S.z : 0;
+  setSeg('k10s', S.s); $('k10zW').hidden = !(bus && S.step === 2);
+  $('k10task').innerHTML = taskHTML('k10task', A.task);
+  $('k10next').textContent = S.step === 1 ? 'σ aufdecken' : 'Nur den Durchschnitt zeigen';
+  const L = [];
+  A.G.forEach((g,i) => { const q = st[i];
+   L.push(`<b style="color:var(${g.col})">${g.name}</b>`);
+   L.push(`μ = (x₁ + x₂ + … + xₙ) / n = (${g.vals.join(' + ')}) / ${q.n} = ${q.s} / ${q.n} = <b>${fmt(q.mu,2)} ${u}</b>`);
+   if (S.step === 2) L.push(`σ = √( Σ (xᵢ − μ)² / n ) = √( (${g.vals.map(v => `(${v} − ${fmt(q.mu,2)})²`).join(' + ')}) / ${q.n} ) = √(${fmt(q.ss,2)} / ${q.n}) = √${fmt(q.va,3)} ≈ <b>${fmt(q.sd, bus ? 3 : 2)} ${u}</b>`);
+   if (bus && S.step === 2) { const plan = q.mu + z*q.sd, m = Math.ceil(plan - 1e-9); L.push(`Fahrzeit einplanen = μ + z · σ = ${fmt(q.mu,2)} + ${z} · ${fmt(q.sd,3)} = <b>${fmt(plan,2)} min</b> → Abfahrt = 8:00 − ${m} min = <b>${clock(m)}</b>`); }
+  });
+  if (S.step === 2) {
+   const g0 = A.G[0], q0 = st[0];
+   L.push(cond(`Σ (xᵢ − μ) = ${g0.vals.map(v => `(${v} − ${fmt(q0.mu,2)})`).join(' + ')} = 0: Abweichungen nach oben und unten heben sich auf, deshalb wird quadriert und am Ende die Wurzel gezogen`, true, 'Kontrolle'));
+   L.push(cond('σ = 0 ⇔ alle Werte gleich · je größer σ, desto weniger kann man sich auf μ verlassen'));
+   L.push(cond('Jeder Wert gleich wahrscheinlich (P = 1/n) ⇒ dieselbe Rechnung wie auf Karte 2: Var(X) = Σ (k − μ)² · P(X = k), σ = √Var(X)'));
+  }
+  lines('k10eq', L);
+  const late = st.map((q,i) => { const plan = q.mu + z*q.sd; return A.G[i].vals.filter(v => v > plan + 1e-9).length; });
+  if (!bus) stat('k10st', S.step === 1
+    ? `<b>Beide haben im Durchschnitt ${fmt(st[0].mu,0)} °C</b>, also ganz normale Körpertemperatur. Geht es also beiden gut? Das kann der Durchschnitt allein nicht beantworten. Deck σ auf!`
+    : `<b>Herr Ofen: σ = ${fmt(st[0].sd,0)} °C.</b> Kopf und Füße liegen jeweils ${fmt(st[0].sd,0)} °C neben dem Durchschnitt, das ist lebensgefährlich. <b>Frau Normal: σ = ${fmt(st[1].sd,0)} °C</b>, alles in Ordnung. Gleicher Durchschnitt, völlig andere Lage. Das sagt erst σ.`, S.step === 1 ? '' : 'ok');
+  else stat('k10st', S.step === 1
+    ? `<b>Beide Linien brauchen im Durchschnitt ${fmt(st[0].mu,0)} min.</b> Wer nur ${fmt(st[0].mu,0)} min einplant, kommt mit Linie 7 an ${late[0]} und mit Linie 12 an ${late[1]} von 10 Tagen zu spät (rote Punkte). Deck σ auf!`
+    : (() => { const m = st.map(q => Math.ceil(q.mu + z*q.sd - 1e-9)); return `<b>Plan μ + ${z}σ:</b> Linie 7 → Abfahrt ${clock(m[0])}, zu spät an ${late[0]} von 10 Tagen · Linie 12 → Abfahrt ${clock(m[1])}, zu spät an ${late[1]} von 10 Tagen.` + (z ? ` Mit Linie 12 musst du <b>${m[1]-m[0]} Minuten früher los</b>, obwohl der Durchschnitt gleich ist. Das große σ kostet Zeit.` : ' Mit „nur μ“ kommst du bei beiden Linien oft zu spät. Wähle mehr Puffer!'); })(), S.step === 1 ? 'bad' : (late[0] + late[1] === 0 ? 'ok' : 'bad'));
+  S.draw(A, st, z);
+ },
+ draw(A, st, z){
+  clear(); const S = this, bus = S.s === 1;
+  if (!bus) {
+   // links: Herr Ofen – Kopf im Backofen, Füße im Kühlschrank
+   const y = 132, gA = A.G[0], gB = A.G[1];
+   svg.append(el('rect', {x:30, y:66, width:130, height:120, rx:8, class:'urn'}));
+   svg.append(el('rect', {x:44, y:92, width:102, height:80, rx:5, style:'fill:var(--va);opacity:.35'}));
+   [60, 80, 100].forEach(cx => svg.append(el('circle', {cx, cy:79, r:4, class:'nd root'})));
+   svg.append(T(95, 200, 'Backofen', 't m', 'middle', 12));
+   svg.append(el('rect', {x:330, y:46, width:100, height:150, rx:8, class:'urn', style:'fill:color-mix(in srgb,var(--vb) 16%,var(--surface))'}));
+   svg.append(el('line', {x1:330, x2:430, y1:96, y2:96, class:'ax'})); svg.append(el('line', {x1:418, x2:418, y1:110, y2:140, class:'ax'}));
+   svg.append(T(380, 210, 'Kühlschrank', 't m', 'middle', 12));
+   S.person(100, 372, y);
+   svg.append(T(95, 50, `${gA.vals[0]} °C`, 't mono b', 'middle', 18, '--hit'));
+   svg.append(T(380, 30, `${gA.vals[1]} °C`, 't mono b', 'middle', 18, '--vb'));
+   svg.append(T(230, 238, `${gA.name} · im Mittel ${fmt(st[0].mu,0)} °C`, 't b', 'middle', 15, gA.col));
+   // rechts: Frau Normal auf dem Sofa
+   svg.append(el('rect', {x:520, y:146, width:330, height:26, rx:8, class:'urn'})); svg.append(el('rect', {x:530, y:120, width:56, height:26, rx:8, class:'urn'}));
+   svg.append(el('line', {x1:528, x2:528, y1:172, y2:196, class:'ax'})); svg.append(el('line', {x1:842, x2:842, y1:172, y2:196, class:'ax'}));
+   S.person(560, 810, y);
+   svg.append(T(560, 92, `${gB.vals[0]} °C`, 't mono b', 'middle', 18, '--vr'));
+   svg.append(T(810, 92, `${gB.vals[1]} °C`, 't mono b', 'middle', 18, '--vr'));
+   svg.append(T(685, 238, `${gB.name} · im Mittel ${fmt(st[1].mu,0)} °C`, 't b', 'middle', 15, gB.col));
+  } else {
+   // zwei Buslinien auf dem Weg zur Schule
+   A.G.forEach((g,i) => { const y = 74 + i*92; svg.append(el('line', {x1:150, x2:760, y1:y+22, y2:y+22, class:'grid', style:'stroke-width:6'}));
+    S.bus(90, y, g.col); svg.append(T(90, y+48, g.name, 't b', 'middle', 13, g.col));
+    svg.append(T(455, y+6, `10 Fahrten · im Mittel ${fmt(st[i].mu,0)} min` + (S.step === 2 ? ` · σ ≈ ${fmt(st[i].sd,2)} min` : ''), 't m', 'middle', 13)); });
+   svg.append(el('polygon', {points:'780,120 830,86 880,120', class:'urn'})); svg.append(el('rect', {x:788, y:120, width:84, height:62, class:'urn'}));
+   svg.append(el('rect', {x:820, y:150, width:20, height:32, class:'urn'})); svg.append(T(830, 200, 'Schule 8:00', 't b', 'middle', 13));
+  }
+  // Punktdiagramm: gleiche Mitte, unterschiedliche Streuung
+  const L = 160, R = 860, yAx = 494, rows = [330, 420], x = v => L + (v - A.lo)/(A.hi - A.lo)*(R - L);
+  svg.append(el('line', {x1:L, x2:R, y1:yAx, y2:yAx, class:'ax'}));
+  for (let v = A.lo; v <= A.hi; v += A.tick) { svg.append(el('line', {x1:x(v), x2:x(v), y1:yAx, y2:yAx+5, class:'ax'})); svg.append(T(x(v), yAx+17, String(v), 't m mono', 'middle', 12)); }
+  svg.append(T(R, yAx+36, A.unit === '°C' ? 'Temperatur in °C' : 'Fahrzeit in Minuten', 't m', 'end', 12));
+  const mu = st[0].mu; svg.append(el('line', {x1:x(mu), x2:x(mu), y1:282, y2:yAx, class:'mu'})); svg.append(T(x(mu), 270, `Durchschnitt μ = ${fmt(mu,0)} ${A.unit}`, 't b ch', 'middle', 14));
+  A.G.forEach((g,i) => { const y0 = rows[i], q = st[i], plan = q.mu + z*q.sd, seen = {};
+   svg.append(el('line', {x1:L, x2:R, y1:y0, y2:y0, class:'grid'})); svg.append(T(L-12, y0, g.name, 't b', 'end', 13, g.col));
+   if (S.step === 2) { const yb = y0 + 30; svg.append(el('line', {x1:x(q.mu-q.sd), x2:x(q.mu+q.sd), y1:yb, y2:yb, class:'bnd'}));
+    [q.mu-q.sd, q.mu+q.sd].forEach(v => svg.append(el('line', {x1:x(v), x2:x(v), y1:yb-6, y2:yb+6, class:'bnd'})));
+    svg.append(T(x(q.mu+q.sd)+8, yb, `σ = ${fmt(q.sd,2)} ${A.unit}`, 't mono ca', 'start', 13)); }
+   if (bus) { const xp = x(Math.min(A.hi, plan)); svg.append(el('line', {x1:xp, x2:xp, y1:y0-34, y2:y0+16, style:'stroke:var(--vr);stroke-width:3'}));
+    svg.append(T(xp+6, y0-30, `Plan ${fmt(plan,1)} min`, 't b', 'start', 12, '--vr')); }
+   g.vals.forEach((v,j) => { const k = seen[v] = (seen[v] || 0) + 1, cy = y0 - (k-1)*14, lateDot = bus && v > plan + 1e-9;
+    svg.append(el('circle', {cx:x(v), cy, r:6.5, style:`fill:var(${lateDot ? '--hit' : g.col});stroke:var(--surface);stroke-width:1.5`}));
+    if (g.labs) { const near = q.sd < 5, anc = near ? (v >= q.mu ? 'start' : 'end') : 'middle'; svg.append(T(x(v) + (near ? (v >= q.mu ? 10 : -10) : 0), y0 - 18, `${g.labs[j]}: ${v} °C`, 't m', anc, 12)); } });
+  });
+  if (!bus && S.step === 2) svg.append(T(450, 546, 'Gleiches μ, aber σ zeigt den Unterschied: Wer mit dem Kopf im Ofen liegt, dem geht es nur im Durchschnitt gut.', 't m', 'middle', 13));
+ },
+ person(xh, xf, y){
+  // liegende Figur: Kopf, Rumpf, zwei Beine mit Füßen
+  const xm = xh + 0.55*(xf - xh);
+  svg.append(el('rect', {x:xh+13, y:y-12, width:xm-xh-13, height:24, rx:11, style:'fill:var(--surface);stroke:var(--ink);stroke-width:2.5'}));
+  svg.append(el('circle', {cx:xh, cy:y, r:15, style:'fill:var(--surface);stroke:var(--ink);stroke-width:2.5'}));
+  [-6, 6].forEach(d => { svg.append(el('line', {x1:xm, y1:y+d, x2:xf, y2:y+d, class:'edge', style:'stroke-width:4;stroke-linecap:round'}));
+   svg.append(el('line', {x1:xf, y1:y+d, x2:xf, y2:y+d-12, class:'edge', style:'stroke-width:4;stroke-linecap:round'})); });
+ },
+ bus(cx, y, col){
+  svg.append(el('rect', {x:cx-50, y:y-8, width:100, height:34, rx:7, style:`fill:var(${col})`}));
+  [0,1,2,3].forEach(i => svg.append(el('rect', {x:cx-42+i*22, y:y-3, width:16, height:11, rx:2, style:'fill:var(--surface)'})));
+  [cx-28, cx+28].forEach(wx => svg.append(el('circle', {cx:wx, cy:y+27, r:6, class:'nd root'})));
+ }
+});
+scenes.k10.preset = function(o){ Object.assign(this, o); setSeg('k10s', this.s); setSeg('k10z', this.z); this.upd(); };
+
 const T_ = T; // Alias, damit der Szenentext-Helfer in Karte 9 neben dem Aufgaben-Parameter T nutzbar bleibt
 
 // Presets: andere Karten mit Werten aus dem Trainer öffnen
@@ -1110,6 +1246,7 @@ order.forEach(id => { const S = scenes[id];
 { const d = document.createElement('div'); d.className = 'grp'; d.innerHTML = `<div class="gl">Downloads</div>` + DL.map(([h,t]) => `<a class="navdl" href="${h}" target="_blank" rel="noopener" title="${t} als PDF im Browser öffnen"><b>▸</b>${t}</a>`).join(''); nav.appendChild(d); }
 order.forEach(id => scenes[id].init());
 nav.addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(b.dataset.id); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-goto]'); if (b) go(b.dataset.goto); });
 svg.addEventListener('click', e => { const r = e.target.closest('rect.pick'); if (r && current && current.pick) current.pick(+r.dataset.k); });
 function go(id){
   if (!scenes[id]) id = 'k1'; stopAll(); current = scenes[id];
